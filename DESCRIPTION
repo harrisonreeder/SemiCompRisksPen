@@ -1,13 +1,13 @@
 Package: SemiCompRisksPen
-Title: What the Package Does (One Line, Title Case)
+Title: Penalized Models for Semi-Competing Risks
 Version: 0.0.0.9000
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Harrison",
+           family = "Reeder",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+           email = "reeder.h@gmail.com",
+           comment = c(ORCID = "0000-0001-8813-9127"))
+Description: This package provides penalized estimation methods for semi-competing risks outcomes.
 License: MIT + file LICENSE
 Suggests: 
     testthat
