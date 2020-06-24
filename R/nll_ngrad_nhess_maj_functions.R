@@ -55,7 +55,7 @@ ngrad_maj_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   Ek <- pen_maj_mat_func(para=para,nP1=nP1,nP2=nP2,nP3=nP3,
                          penalty=penalty,lambda=lambda, a=a,
                          penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline, pen_mat_w_lambda = pen_mat_w_lambda,
+                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                          penweights_list=penweights_list, mm_epsilon=mm_epsilon, hazard=hazard)
 
   return( ngrad + ( n * (Ek %*% para) ) )
@@ -83,7 +83,7 @@ nhess_maj_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   Ek <- pen_maj_mat_func(para=para,nP1=nP1,nP2=nP2,nP3=nP3,
                          penalty=penalty,lambda=lambda, a=a,
                          penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline, pen_mat_w_lambda = pen_mat_w_lambda,
+                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                          penweights_list=penweights_list, mm_epsilon=mm_epsilon, hazard=hazard)
 
   return( nhess + ( n * Ek ) )

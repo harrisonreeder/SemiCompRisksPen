@@ -141,7 +141,7 @@ simID_PW <- function (id = NULL, x1, x2, x3, beta1.true, beta2.true, beta3.true,
 rpwexp <- function(n, rate=1, intervals=NULL, cumulative=FALSE){
   if(is.null(intervals)){
     if (cumulative){return(cumsum(stats::rexp(n,rate[1])))}else
-      return(rexp(n,rate[1]))}
+      return(stats::rexp(n,rate[1]))}
   k <- length(rate)
   if (k==1){
     if(cumulative){return(cumsum(stats::rexp(n,rate)))}else

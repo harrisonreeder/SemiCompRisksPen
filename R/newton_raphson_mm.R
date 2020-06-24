@@ -141,7 +141,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 
     if(is.null(grad_step) & restart_count < num_restarts){
       print("Problem trying to invert Hessian matrix, restarting at perturbed start values.")
-      trace_mat <- prevVals <- finalVals <- startVals <- runif(n=1,min=0.8,max=1.2)*para
+      trace_mat <- prevVals <- finalVals <- startVals <- stats::runif(n=1,min=0.8,max=1.2)*para
       fit_code <- 4 #follows convention from nleqslv that is 1 if converged, 4 if maxit reached, 3 if stalled
       bad_step_count <- 0
       restart_count <- restart_count + 1
@@ -199,7 +199,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 
     if(is.nan(next_nll_maj) & restart_count < num_restarts){
       print("Candidate iteration step yields infinite function value, restarting at perturbed start values.")
-      trace_mat <- prevVals <- finalVals <- startVals <- runif(n=1,min=0.8,max=1.2)*para
+      trace_mat <- prevVals <- finalVals <- startVals <- stats::runif(n=1,min=0.8,max=1.2)*para
       fit_code <- 4 #follows convention from nleqslv that is 1 if converged, 4 if maxit reached, 3 if stalled
       bad_step_count <- 0
       restart_count <- restart_count + 1
@@ -263,7 +263,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 
     if(bad_step_count == 3 & restart_count < num_restarts){ #restart if a few bad steps in a row
       print("Algorithm cannot find good next step. Restarting at perturbed start values.")
-      trace_mat <- prevVals <- finalVals <- startVals <- runif(n=1,min=0.8,max=1.2)*para
+      trace_mat <- prevVals <- finalVals <- startVals <- stats::runif(n=1,min=0.8,max=1.2)*para
       fit_code <- 4 #follows convention from nleqslv that is 1 if converged, 4 if maxit reached, 3 if stalled
       bad_step_count <- 0
       restart_count <- restart_count + 1

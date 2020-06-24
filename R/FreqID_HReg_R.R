@@ -46,7 +46,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                                      sep=""))
   #arrange data into correct form, extracting subset of variables
   #and observations needed in model
-  data <- model.frame(form2, data=data, na.action=na.action,
+  data <- stats::model.frame(form2, data=data, na.action=na.action,
                       subset=subset)
   #create matrices storing two outcomes, and then component vectors
   time1 <- Formula::model.part(form2, data=data, lhs=1)
@@ -57,11 +57,11 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
   y2 <- time2[[1]]
   delta2 <- time2[[2]]
   #Create covariate matrices for each of three transition hazards
-  Xmat1 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=1),
+  Xmat1 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=1),
                                  data=data))
-  Xmat2 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=2),
+  Xmat2 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=2),
                                  data=data))
-  Xmat3 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=3),
+  Xmat3 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=3),
                                  data=data))
 
   ##PREPARE KNOTS AND BASIS FUNCTIONS FOR FLEXIBLE MODELS##
@@ -129,7 +129,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
     #                                                  penweights_list = list(), mu_smooth_fused = NULL,
     #                                                  control=con_prox, verbose=FALSE)$estimate
 
-    parahat_mle <- optim(par = startVals, fn = nll_func, gr = ngrad_func,
+    parahat_mle <- stats::optim(par = startVals, fn = nll_func, gr = ngrad_func,
                          y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                          Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                          hazard=hazard,frailty=frailty,model=model,
@@ -375,7 +375,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
 
   #alternative definition of degrees of freedom from Sennhenn-Reulen & Kneib via Gray (1993)
   # browser()
-  if(!is.null(tempfit$final_nhess)){
+  if(!is.null(final_nhess)){
     final_nhess_nopen <- nhess_func(para=finalVals, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                                     Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                                     hazard=hazard, frailty=frailty, model=model)
@@ -400,7 +400,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
   }
 
 
-  value <- list(estimate=finalVals, estimate_selected=finalVals_selected,
+  value <- list(estimate=finalVals,# estimate_selected=finalVals_selected,
                 nll=final_nll, nll_pen=final_nll_pen,
                 nP_vec=nP_vec,
                 nP_selected_vec=nP_selected_vec,

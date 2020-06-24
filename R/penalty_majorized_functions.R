@@ -5,7 +5,7 @@
 pen_maj_internal <- function(beta,beta0,penalty,lambda,a,penweights,mm_epsilon){
 
   beta0_pen <- pen_internal(para=beta0,penalty=penalty,lambda=lambda,a=a,D=NULL,penweights=penweights)
-  beta0_pen_prime <- pen_prime_internal(para=beta0,penalty=penalty,lambda=lambda,a=a,D=NULL,penweights=penweights)
+  beta0_pen_prime <- pen_prime_internal(para=beta0,penalty=penalty,lambda=lambda,a=a,penweights=penweights)
 
   out <- beta0_pen +
     (beta^2 - beta0^2) * beta0_pen_prime /
@@ -70,20 +70,20 @@ pen_maj_mat_func <- function(para,nP1,nP2,nP3,
   #break out the beta vectors from the larger parameter vector, using nP0 to correctly pad out the baseline hazard and theta parameters
   if(nP1 != 0){
     beta1 <- para[(1+nP0):(nP0+nP1)]
-    Ek_vec[(1+nP0):(nP0+nP1)] <- pen_prime_internal(beta=beta1,lambda=lambda1,penalty=penalty,a=a,penweights=penweights_list[["coef1"]]) /
+    Ek_vec[(1+nP0):(nP0+nP1)] <- pen_prime_internal(para=beta1,lambda=lambda1,penalty=penalty,a=a,penweights=penweights_list[["coef1"]]) /
       (sqrt(mm_epsilon+beta1^2)) #Oelker & Tutz's Formulation of the approximation
     #               (mm_epsilon+abs(beta1)), #Hunter & Li's Formulation of the approximation
 
   }
   if(nP2 != 0){
     beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
-    Ek_vec[(1+nP0+nP1):(nP0+nP1+nP2)] <- pen_prime_internal(beta=beta2,lambda=lambda2,penalty=penalty,a=a,penweights=penweights_list[["coef2"]]) /
+    Ek_vec[(1+nP0+nP1):(nP0+nP1+nP2)] <- pen_prime_internal(para=beta2,lambda=lambda2,penalty=penalty,a=a,penweights=penweights_list[["coef2"]]) /
       (sqrt(mm_epsilon+beta2^2)) #Oelker & Tutz's Formulation of the approximation
     #               (mm_epsilon+abs(beta2)), #Hunter & Li's Formulation of the approximation
   }
   if(nP3 != 0){
     beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-    Ek_vec[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- pen_prime_internal(beta=beta3,lambda=lambda3,penalty=penalty,a=a,penweights=penweights_list[["coef3"]]) /
+    Ek_vec[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- pen_prime_internal(para=beta3,lambda=lambda3,penalty=penalty,a=a,penweights=penweights_list[["coef3"]]) /
       (sqrt(mm_epsilon+beta3^2)) #Oelker & Tutz's Formulation of the approximation
     #               (mm_epsilon+abs(beta3)) #Hunter & Li's Formulation of the approximation
   }

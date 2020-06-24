@@ -8,12 +8,12 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     quantile_seq2 <- seq(from = 0,to = 1, length.out = p02-2)[-c(1,p02-2)]
     quantile_seq3 <- seq(from = 0,to = 1, length.out = p03-2)[-c(1,p03-2)]
 
-    knots1 <- c(0,quantile(y1[delta1==1],quantile_seq1),max(y1))
-    knots2 <- c(0,quantile(y1[(1-delta1)*delta2==1],quantile_seq2),max(y1))
+    knots1 <- c(0,stats::quantile(y1[delta1==1],quantile_seq1),max(y1))
+    knots2 <- c(0,stats::quantile(y1[(1-delta1)*delta2==1],quantile_seq2),max(y1))
     if(model=="semi-markov"){
-      knots3 <- c(0,quantile((y2-y1)[delta1*delta2==1],quantile_seq3),max(y2-y1))
+      knots3 <- c(0,stats::quantile((y2-y1)[delta1*delta2==1],quantile_seq3),max(y2-y1))
     } else {
-      knots3 <- c(0,quantile(y2[delta1*delta2==1],quantile_seq3),max(y2))
+      knots3 <- c(0,stats::quantile(y2[delta1*delta2==1],quantile_seq3),max(y2))
     }
   } else if(hazard=="piecewise"){
 
@@ -21,12 +21,12 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     quantile_seq2 <- seq(from = 0,to = 1, length.out = p02+1)[-c(1,p02+1)]
     quantile_seq3 <- seq(from = 0,to = 1, length.out = p03+1)[-c(1,p03+1)]
 
-    knots1 <- c(0,quantile(y1[delta1==1],quantile_seq1))
-    knots2 <- c(0,quantile(y1[(1-delta1)*delta2==1],quantile_seq2))
+    knots1 <- c(0,stats::quantile(y1[delta1==1],quantile_seq1))
+    knots2 <- c(0,stats::quantile(y1[(1-delta1)*delta2==1],quantile_seq2))
     if(model=="semi-markov"){
-      knots3 <- c(0,quantile((y2-y1)[delta1*delta2==1],quantile_seq3))
+      knots3 <- c(0,stats::quantile((y2-y1)[delta1*delta2==1],quantile_seq3))
     } else {
-      knots3 <- c(0,quantile(y2[delta1*delta2==1],quantile_seq3))
+      knots3 <- c(0,stats::quantile(y2[delta1*delta2==1],quantile_seq3))
     }
 
   } else if(hazard=="royston-parmar"){
@@ -35,12 +35,12 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     quantile_seq2 <- seq(from = 0.05,to = 0.95, length.out = p02)[-c(1,p02)]
     quantile_seq3 <- seq(from = 0.05,to = 0.95, length.out = p03)[-c(1,p03)]
 
-    knots1 <- c(0,quantile(log(y1)[delta1==1],quantile_seq1),max(log(y1)))
-    knots2 <- c(0,quantile(log(y1)[(1-delta1)*delta2==1],quantile_seq2),max(log(y1)))
+    knots1 <- c(0,stats::quantile(log(y1)[delta1==1],quantile_seq1),max(log(y1)))
+    knots2 <- c(0,stats::quantile(log(y1)[(1-delta1)*delta2==1],quantile_seq2),max(log(y1)))
     if(model=="semi-markov"){
-      knots3 <- c(0,quantile(log(y2-y1)[delta1*delta2==1],quantile_seq3),max(log(y2-y1)))
+      knots3 <- c(0,stats::quantile(log(y2-y1)[delta1*delta2==1],quantile_seq3),max(log(y2-y1)))
     } else {
-      knots3 <- c(0,quantile(log(y2)[delta1*delta2==1],quantile_seq3),max(y2))
+      knots3 <- c(0,stats::quantile(log(y2)[delta1*delta2==1],quantile_seq3),max(y2))
     }
   } else {return(NULL)}
 
@@ -114,17 +114,17 @@ get_start <- function(y1,y2,delta1,delta2,
   alpha1 <- 1/fit_survreg_1$scale
   alpha2 <- 1/fit_survreg_2$scale
   alpha3 <- 1/fit_survreg_3$scale
-  kappa1 <- exp(-alpha1 * coef(fit_survreg_1)[1])
-  kappa2 <- exp(-alpha2 * coef(fit_survreg_2)[1])
-  kappa3 <- exp(-alpha3 * coef(fit_survreg_3)[1])
+  kappa1 <- exp(-alpha1 * stats::coef(fit_survreg_1)[1])
+  kappa2 <- exp(-alpha2 * stats::coef(fit_survreg_2)[1])
+  kappa3 <- exp(-alpha3 * stats::coef(fit_survreg_3)[1])
   if(sparse_start){
     beta1 <- numeric(p1)
     beta2 <- numeric(p2)
     beta3 <- numeric(p3)
   } else{
-    beta1 <- -coef(fit_survreg_1)[-1] * alpha1
-    beta2 <- -coef(fit_survreg_2)[-1] * alpha2
-    beta3 <- -coef(fit_survreg_3)[-1] * alpha3
+    beta1 <- -stats::coef(fit_survreg_1)[-1] * alpha1
+    beta2 <- -stats::coef(fit_survreg_2)[-1] * alpha2
+    beta3 <- -stats::coef(fit_survreg_3)[-1] * alpha3
   }
 
   #help create a useful naming convention (varname_1)
@@ -164,7 +164,7 @@ get_start <- function(y1,y2,delta1,delta2,
 
   if(hazard %in% c("bspline","piecewise")){
     #run the model with no covariates to get possible start values
-    startVals <- optim(par = rep(0,p01+p02+p03+1),fn = nll_func, gr = ngrad_func,
+    startVals <- stats::optim(par = rep(0,p01+p02+p03+1),fn = nll_func, gr = ngrad_func,
                        y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                        Xmat1=NULL, Xmat2=NULL, Xmat3=NULL,
                        hazard=hazard, frailty=frailty, model=model,
@@ -180,17 +180,17 @@ get_start <- function(y1,y2,delta1,delta2,
     #following discussion in Royston-Parmar (2002), use weibull to fit log(H0) and then regress spline basis
     #generates starting estimates corresponding to weibull baseline hazard
     log_Haz01 <- log(kappa1) + alpha1 * log(y1[delta1==1])
-    phi1 <- lm.fit(x = basis1[delta1==1,], y = log_Haz01 )$coef
+    phi1 <- stats::lm.fit(x = basis1[delta1==1,], y = log_Haz01 )$coef
 
     log_Haz02 <- log(kappa2) + alpha2 * log(y1[(1-delta1)*delta2==1])
-    phi2 <- lm.fit(x = basis2[(1-delta1)*delta2==1,], y = log_Haz02)$coef
+    phi2 <- stats::lm.fit(x = basis2[(1-delta1)*delta2==1,], y = log_Haz02)$coef
 
     if(model=="semi-markov"){
       log_Haz03 <- log(kappa3) + alpha3 * log((y2-y1)[delta1*delta2==1])
-      phi3 <- lm.fit(x = basis3[delta1*delta2==1,], y = log_Haz03)$coef
+      phi3 <- stats::lm.fit(x = basis3[delta1*delta2==1,], y = log_Haz03)$coef
     } else {
       log_Haz03 <- log(kappa3) + alpha3 * log(y2[delta1*delta2==1])
-      phi3 <- lm.fit(x = basis3[delta1*delta2==1,], y = log_Haz03)$coef
+      phi3 <- stats::lm.fit(x = basis3[delta1*delta2==1,], y = log_Haz03)$coef
     }
 
     startVals <- c(phi1,phi2,phi3,log(0.5))

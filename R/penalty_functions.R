@@ -145,31 +145,31 @@ pen_func <- function(para,nP1,nP2,nP3,
 
 
 
-pen_prime_internal <- function(beta, penalty, lambda, a, penweights){
+pen_prime_internal <- function(para, penalty, lambda, a, penweights){
 
-  ##Function implementing the 'derivative' of various penalty terms (defined everywhere except where beta=0)
-  #beta and lambda are in all of them, a is in SCAD, MCP and adalasso, and then betahat is in adalasso
+  ##Function implementing the 'derivative' of various penalty terms (defined everywhere except where para=0)
+  #para and lambda are in all of them, a is in SCAD, MCP and adalasso, and then parahat is in adalasso
 
   if(penalty == "lasso"){
     out <- lambda
   } else if(penalty == "scad"){
-    beta <- abs(beta)
-    ind2 <- ind1 <- rep(0, length(beta))
-    ind1[beta > lambda] <- 1
-    ind2[beta <= (lambda * a)] <- 1
+    para <- abs(para)
+    ind2 <- ind1 <- rep(0, length(para))
+    ind1[para > lambda] <- 1
+    ind2[para <= (lambda * a)] <- 1
     out <- lambda * (1 - ind1) +
-      ((lambda * a) - beta) * ind2/(a - 1) * ind1
+      ((lambda * a) - para) * ind2/(a - 1) * ind1
   } else if(penalty == "mcp"){ #careful of the sign here! This is from breheny 2-29 slide 15
-    ind1 <- rep(0, length(beta))
-    ind1[abs(beta) <= a*lambda] <- 1
-    # out <- ind1*(lambda - abs(beta)/a)*sign(beta)
-    out <- ind1*(lambda - abs(beta)/a)
+    ind1 <- rep(0, length(para))
+    ind1[abs(para) <= a*lambda] <- 1
+    # out <- ind1*(lambda - abs(para)/a)*sign(para)
+    out <- ind1*(lambda - abs(para)/a)
   } else{
-    out <- rep(0, length(beta)) #vector of 0's
+    out <- rep(0, length(para)) #vector of 0's
   }
 
   #in principle, any penalty can have weights added, e.g., to set some terms to 0
-  if(!is.null(penweights) && length(penweights)==length(beta)){
+  if(!is.null(penweights) && length(penweights)==length(para)){
     return(penweights * out)
   } else{
     # warning("weights supplied to lasso function are NULL, or of incorrect length. ignoring weights.")
@@ -202,18 +202,18 @@ pen_concave_part_prime_func <- function(para,nP1,nP2,nP3,
   #break out the beta vectors from the larger parameter vector, using nP0 to correctly pad out the baseline hazard and theta parameters
   if(nP1 != 0){
     beta1 <- para[(1+nP0):(nP0+nP1)]
-    grad_part[(1+nP0):(nP0+nP1)] <- sign(beta1)*(pen_prime_internal(beta=beta1,lambda=lambda1,penalty=penalty,a=a,penweights=penweights_list[["coef1"]]) -
-                                                   pen_prime_internal(beta=beta1,lambda=lambda1,penalty="lasso",a=a,penweights=penweights_list[["coef1"]]))
+    grad_part[(1+nP0):(nP0+nP1)] <- sign(beta1)*(pen_prime_internal(para=beta1,lambda=lambda1,penalty=penalty,a=a,penweights=penweights_list[["coef1"]]) -
+                                                   pen_prime_internal(para=beta1,lambda=lambda1,penalty="lasso",a=a,penweights=penweights_list[["coef1"]]))
   }
   if(nP2 != 0){
     beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
-    grad_part[(1+nP0+nP1):(nP0+nP1+nP2)] <- sign(beta2)*(pen_prime_internal(beta=beta2,lambda=lambda2,penalty=penalty,a=a,penweights=penweights_list[["coef2"]]) -
-                                                           pen_prime_internal(beta=beta2,lambda=lambda2,penalty="lasso",a=a,penweights=penweights_list[["coef2"]]))
+    grad_part[(1+nP0+nP1):(nP0+nP1+nP2)] <- sign(beta2)*(pen_prime_internal(para=beta2,lambda=lambda2,penalty=penalty,a=a,penweights=penweights_list[["coef2"]]) -
+                                                           pen_prime_internal(para=beta2,lambda=lambda2,penalty="lasso",a=a,penweights=penweights_list[["coef2"]]))
   }
   if(nP3 != 0){
     beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-    grad_part[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- sign(beta3)*(pen_prime_internal(beta=beta3,lambda=lambda3,penalty=penalty,a=a,penweights=penweights_list[["coef3"]]) -
-                                                                   pen_prime_internal(beta=beta3,lambda=lambda3,penalty="lasso",a=a,penweights=penweights_list[["coef3"]]))
+    grad_part[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- sign(beta3)*(pen_prime_internal(para=beta3,lambda=lambda3,penalty=penalty,a=a,penweights=penweights_list[["coef3"]]) -
+                                                                   pen_prime_internal(para=beta3,lambda=lambda3,penalty="lasso",a=a,penweights=penweights_list[["coef3"]]))
   }
 
   # names(grad_part) <- names(para)

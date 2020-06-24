@@ -43,7 +43,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                                      sep=""))
   #arrange data into correct form, extracting subset of variables
   #and observations needed in model
-  data <- model.frame(form2, data=data, na.action=na.action,
+  data <- stats::model.frame(form2, data=data, na.action=na.action,
                       subset=subset)
   #create matrices storing two outcomes, and then component vectors
   time1 <- Formula::model.part(form2, data=data, lhs=1)
@@ -54,11 +54,11 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
   y2 <- time2[[1]]
   delta2 <- time2[[2]]
   #Create covariate matrices for each of three transition hazards
-  Xmat1 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=1),
+  Xmat1 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=1),
                                  data=data))
-  Xmat2 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=2),
+  Xmat2 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=2),
                                  data=data))
-  Xmat3 <- as.matrix(model.frame(formula(form2, lhs=0, rhs=3),
+  Xmat3 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=3),
                                  data=data))
   n <- length(y1)
 

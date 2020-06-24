@@ -22,4 +22,5 @@ LinkingTo:
     RcppArmadillo
 Imports: 
     Rcpp,
-    MASS
+    MASS,
+    Formula

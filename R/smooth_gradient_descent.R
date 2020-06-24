@@ -84,7 +84,7 @@ smooth_gradient_descent <- function(para, y1, y2, delta1, delta2,
   ##Run algorithm##
   ##*************##
   if(method %in% c("L-BFGS-B","BFGS")){
-    out <- optim(par = para, fn=smooth_obj_func, gr=smooth_obj_grad_func,
+    out <- stats::optim(par = para, fn=smooth_obj_func, gr=smooth_obj_grad_func,
                  y1=y1, y2=y2, delta1=delta1, delta2=delta2, Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                  hazard=hazard, frailty=frailty, model=model,
                  basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
