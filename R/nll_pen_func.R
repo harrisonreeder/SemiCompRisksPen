@@ -40,4 +40,3 @@ nll_pen_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 
   return(out)
 }
-

@@ -45,10 +45,10 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
   #maxit is maximum number of newton-raphson iterations allowed
   #min_lr is the minimum learning rate allowed through step-halving process.
   #conv_crit determines criterion used to judge convergence
-  #'est_change_norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
-  #'max_est_change' looks at largest absolute change in a parameter value
-  #'nll_pen_change' looks at change in regularized log-likelihood
-  #'maj_grad_norm' looks at l1 norm of majorized gradient
+  #est_change_norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
+  #max_est_change' looks at largest absolute change in a parameter value
+  #nll_pen_change' looks at change in regularized log-likelihood
+  #maj_grad_norm' looks at l1 norm of majorized gradient
   # if (length(noNms <- namc[!namc %in% nmsC])){
   #   warning("unknown names in control: ", paste(noNms, collapse=", "))
   # }

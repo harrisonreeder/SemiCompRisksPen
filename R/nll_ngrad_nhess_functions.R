@@ -219,6 +219,49 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 
 
 
+
+#' Gradient Matrix of Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning a matrix of contributions to the gradient of the negative log-likelihood for the illness-death model,
+#'   under specified baseline hazard, and specified frailty,
+#'   and specified Markov/semi-Markov assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric matrix with \eqn{n} rows and width same as length of \code{para} with gradient contributions
+#'   for the negative log likelihood.
+#' @export
+ngrad_mat_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
+                           hazard, frailty, model){
+
+  #number of parameters in each arm dictated by number of covariate columns in each matrix
+  nP1 <- if(!is.null(Xmat1)) ncol(Xmat1) else 0
+  nP2 <- if(!is.null(Xmat2)) ncol(Xmat2) else 0
+  nP3 <- if(!is.null(Xmat3)) ncol(Xmat3) else 0
+
+  if(tolower(hazard) == "weibull"){
+    if(frailty){
+      nP0 <- 7
+      stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
+      if(tolower(model)=="semi-markov"){
+        ngrad_mat <- ngradWB_ID_frail_mat_SM(para = para,y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                             X1=as.matrix(Xmat1), X2=as.matrix(Xmat2), X3=as.matrix(Xmat3))
+      } else{
+        ngrad_mat <- ngradWB_ID_frail_mat_M(para = para,
+                                            y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                            X1=as.matrix(Xmat1), X2=as.matrix(Xmat2), X3=as.matrix(Xmat3))
+      }
+    } else{stop("non-frailty not yet implemented")}
+  } else{stop("non-Weibull not yet implemented")}
+  return(ngrad_mat)
+
+}
+
+
+
+
 #' Hessian of Negative Log-Likelihood Function for Illness-Death Model
 #'
 #' Function returning the Hessian of the negative log-likelihood for the illness-death model,

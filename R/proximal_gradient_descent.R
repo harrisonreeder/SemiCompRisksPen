@@ -43,10 +43,10 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
 
   #construct control list
   #conv_crit determines criterion used to judge convergence
-  #'est_change_norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
-  #'max_est_change' looks at largest absolute change in a parameter value
-  #'nll_pen_change' looks at change in regularized log-likelihood
-  #'maj_grad_norm' looks at l1 norm of majorized gradient
+  #est_change_norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
+  #max_est_change' looks at largest absolute change in a parameter value
+  #nll_pen_change' looks at change in regularized log-likelihood
+  #maj_grad_norm' looks at l1 norm of majorized gradient
   if("maxit" < 0){
     stop("maxit must be nonnegative.")
   }
