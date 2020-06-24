@@ -37,6 +37,11 @@ penweights_internal <- function(parahat,D,penweight_type="adaptive",addl_penweig
   }
 }
 
+
+##***********************************##
+####Define Regularization Functions####
+##***********************************##
+
 pen_internal <- function(para, penalty, lambda, a, D, penweights){
   #unified function that returns penalties--  ASSUMES CHECKS HAVE BEEN DONE
   #D is a matrix of contrasts, with number of columns equal to the total number of parameters, rows equal to the total number of differences being `fused'
@@ -77,41 +82,7 @@ pen_internal <- function(para, penalty, lambda, a, D, penweights){
   }
 }
 
-pen_prime_internal <- function(beta, penalty, lambda, a, penweights){
 
-  ##Function implementing the 'derivative' of various penalty terms (defined everywhere except where beta=0)
-  #beta and lambda are in all of them, a is in SCAD, MCP and adalasso, and then betahat is in adalasso
-
-  if(penalty == "lasso"){
-    out <- lambda
-  } else if(penalty == "scad"){
-    beta <- abs(beta)
-    ind2 <- ind1 <- rep(0, length(beta))
-    ind1[beta > lambda] <- 1
-    ind2[beta <= (lambda * a)] <- 1
-    out <- lambda * (1 - ind1) +
-      ((lambda * a) - beta) * ind2/(a - 1) * ind1
-  } else if(penalty == "mcp"){ #careful of the sign here! This is from breheny 2-29 slide 15
-    ind1 <- rep(0, length(beta))
-    ind1[abs(beta) <= a*lambda] <- 1
-    # out <- ind1*(lambda - abs(beta)/a)*sign(beta)
-    out <- ind1*(lambda - abs(beta)/a)
-  } else{
-    out <- rep(0, length(beta)) #vector of 0's
-  }
-
-  #in principle, any penalty can have weights added, e.g., to set some terms to 0
-  if(!is.null(penweights) && length(penweights)==length(beta)){
-    return(penweights * out)
-  } else{
-    # warning("weights supplied to lasso function are NULL, or of incorrect length. ignoring weights.")
-    return(out)
-  }
-}
-
-##***********************************##
-####Define Regularization Functions####
-##***********************************##
 
 pen_func <- function(para,nP1,nP2,nP3,
                      penalty, lambda, a,
@@ -169,3 +140,82 @@ pen_func <- function(para,nP1,nP2,nP3,
   return(pen)
 }
 
+
+##define derivative of penalty functions, and corresponding gradient function
+
+
+
+pen_prime_internal <- function(beta, penalty, lambda, a, penweights){
+
+  ##Function implementing the 'derivative' of various penalty terms (defined everywhere except where beta=0)
+  #beta and lambda are in all of them, a is in SCAD, MCP and adalasso, and then betahat is in adalasso
+
+  if(penalty == "lasso"){
+    out <- lambda
+  } else if(penalty == "scad"){
+    beta <- abs(beta)
+    ind2 <- ind1 <- rep(0, length(beta))
+    ind1[beta > lambda] <- 1
+    ind2[beta <= (lambda * a)] <- 1
+    out <- lambda * (1 - ind1) +
+      ((lambda * a) - beta) * ind2/(a - 1) * ind1
+  } else if(penalty == "mcp"){ #careful of the sign here! This is from breheny 2-29 slide 15
+    ind1 <- rep(0, length(beta))
+    ind1[abs(beta) <= a*lambda] <- 1
+    # out <- ind1*(lambda - abs(beta)/a)*sign(beta)
+    out <- ind1*(lambda - abs(beta)/a)
+  } else{
+    out <- rep(0, length(beta)) #vector of 0's
+  }
+
+  #in principle, any penalty can have weights added, e.g., to set some terms to 0
+  if(!is.null(penweights) && length(penweights)==length(beta)){
+    return(penweights * out)
+  } else{
+    # warning("weights supplied to lasso function are NULL, or of incorrect length. ignoring weights.")
+    return(out)
+  }
+}
+
+
+pen_concave_part_prime_func <- function(para,nP1,nP2,nP3,
+                                        penalty, lambda, a,
+                                        penweights_list){
+
+  #function to compute the gradient of the smooth part of the penalty, following Yao (2018)
+  #this is also on the 'mean' rather than the 'sum' scale, so must be scaled appropriately if grad/hess depend on sample size
+  #THIS DOES NOT TAKE ANYTHING ABOUT THE FUSED PENALTY, BECAUSE WE DO NOT CONSIDER NONCONVEX FUSED PENALTY AT PRESENT
+
+
+  #redefine lambda and lambda_fusedcoef depending on a single value or three separate values are given
+  if(length(lambda)==1){
+    lambda1 <- lambda2 <- lambda3 <- lambda
+  } else if(length(lambda)==3){
+    lambda1 <- lambda[1]; lambda2 <- lambda[2]; lambda3 <- lambda[3]
+  } else{ stop("lambda is neither a single value or a 3-vector!!") }
+
+  nPtot <- length(para)
+  nP0 <- length(para) - nP1 - nP2 - nP3
+
+  grad_part <- numeric(nPtot)
+
+  #break out the beta vectors from the larger parameter vector, using nP0 to correctly pad out the baseline hazard and theta parameters
+  if(nP1 != 0){
+    beta1 <- para[(1+nP0):(nP0+nP1)]
+    grad_part[(1+nP0):(nP0+nP1)] <- sign(beta1)*(pen_prime_internal(beta=beta1,lambda=lambda1,penalty=penalty,a=a,penweights=penweights_list[["coef1"]]) -
+                                                   pen_prime_internal(beta=beta1,lambda=lambda1,penalty="lasso",a=a,penweights=penweights_list[["coef1"]]))
+  }
+  if(nP2 != 0){
+    beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
+    grad_part[(1+nP0+nP1):(nP0+nP1+nP2)] <- sign(beta2)*(pen_prime_internal(beta=beta2,lambda=lambda2,penalty=penalty,a=a,penweights=penweights_list[["coef2"]]) -
+                                                           pen_prime_internal(beta=beta2,lambda=lambda2,penalty="lasso",a=a,penweights=penweights_list[["coef2"]]))
+  }
+  if(nP3 != 0){
+    beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
+    grad_part[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- sign(beta3)*(pen_prime_internal(beta=beta3,lambda=lambda3,penalty=penalty,a=a,penweights=penweights_list[["coef3"]]) -
+                                                                   pen_prime_internal(beta=beta3,lambda=lambda3,penalty="lasso",a=a,penweights=penweights_list[["coef3"]]))
+  }
+
+  # names(grad_part) <- names(para)
+  return(grad_part)
+}
