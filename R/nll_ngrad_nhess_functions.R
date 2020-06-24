@@ -215,3 +215,50 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   } else {stop("please choose hazard of 'weibull', 'bspline', or 'piecewise'")}
   return( ngrad )
 }
+
+
+
+
+#' Hessian of Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning the Hessian of the negative log-likelihood for the illness-death model,
+#'   under specified baseline hazard, and specified frailty,
+#'   and specified Markov/semi-Markov assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric square matrix with dimensions the same length as \code{para}
+#'   with sum of gradient contributions for the negative log likelihood.
+#' @export
+nhess_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
+                       frailty, hazard, model){
+
+  #number of parameters in each arm dictated by number of covariate columns in each matrix
+  nP1 <- if(!is.null(Xmat1)) ncol(Xmat1) else 0
+  nP2 <- if(!is.null(Xmat2)) ncol(Xmat2) else 0
+  nP3 <- if(!is.null(Xmat3)) ncol(Xmat3) else 0
+  n <- length(y1)
+
+  if(tolower(hazard) == "weibull"){
+    if(frailty){
+      nP0 <- 7
+      stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
+      if(tolower(model)=="semi-markov"){
+        nhess <- nhessWB_ID_frail_SM(para=para, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                     X1=if(nP1>0) as.matrix(Xmat1) else matrix(nrow = n, ncol=0),
+                                     X2=if(nP2>0) as.matrix(Xmat2) else matrix(nrow = n, ncol=0),
+                                     X3=if(nP3>0) as.matrix(Xmat3) else matrix(nrow = n, ncol=0))
+      } else{ #markov model
+        nhess <- nhessWB_ID_frail_M(para=para, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                    X1=if(nP1>0) as.matrix(Xmat1) else matrix(nrow = n, ncol=0),
+                                    X2=if(nP2>0) as.matrix(Xmat2) else matrix(nrow = n, ncol=0),
+                                    X3=if(nP3>0) as.matrix(Xmat3) else matrix(nrow = n, ncol=0))
+      }
+    } else{stop("non-frailty not yet implemented")}
+  } else{stop("non-Weibull not yet implemented")}
+
+  return(nhess)
+
+}

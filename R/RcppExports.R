@@ -53,3 +53,7 @@ ngradWB_ID_frail_mat_M <- function(para, y1, y2, delta1, delta2, X1, X2, X3) {
     .Call(`_SemiCompRisksPen_ngradWB_ID_frail_mat_M`, para, y1, y2, delta1, delta2, X1, X2, X3)
 }
 
+admm_po_cpp <- function(beta_tilde, slambda, penmat, Q, eigval, fast, maxiter, rho, beta_old) {
+    .Call(`_SemiCompRisksPen_admm_po_cpp`, beta_tilde, slambda, penmat, Q, eigval, fast, maxiter, rho, beta_old)
+}
+

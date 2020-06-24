@@ -263,6 +263,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// admm_po_cpp
+arma::vec admm_po_cpp(const arma::vec& beta_tilde, const arma::vec& slambda, const arma::mat& penmat, const arma::mat& Q, const arma::vec& eigval, const bool fast, const int maxiter, double rho, const arma::vec& beta_old);
+RcppExport SEXP _SemiCompRisksPen_admm_po_cpp(SEXP beta_tildeSEXP, SEXP slambdaSEXP, SEXP penmatSEXP, SEXP QSEXP, SEXP eigvalSEXP, SEXP fastSEXP, SEXP maxiterSEXP, SEXP rhoSEXP, SEXP beta_oldSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta_tilde(beta_tildeSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type slambda(slambdaSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type penmat(penmatSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type eigval(eigvalSEXP);
+    Rcpp::traits::input_parameter< const bool >::type fast(fastSEXP);
+    Rcpp::traits::input_parameter< const int >::type maxiter(maxiterSEXP);
+    Rcpp::traits::input_parameter< double >::type rho(rhoSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta_old(beta_oldSEXP);
+    rcpp_result_gen = Rcpp::wrap(admm_po_cpp(beta_tilde, slambda, penmat, Q, eigval, fast, maxiter, rho, beta_old));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SemiCompRisksPen_nlogLikRP_uni", (DL_FUNC) &_SemiCompRisksPen_nlogLikRP_uni, 6},
@@ -278,6 +297,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SemiCompRisksPen_nhessWB_ID_frail_M", (DL_FUNC) &_SemiCompRisksPen_nhessWB_ID_frail_M, 8},
     {"_SemiCompRisksPen_ngradWB_ID_frail_mat_SM", (DL_FUNC) &_SemiCompRisksPen_ngradWB_ID_frail_mat_SM, 8},
     {"_SemiCompRisksPen_ngradWB_ID_frail_mat_M", (DL_FUNC) &_SemiCompRisksPen_ngradWB_ID_frail_mat_M, 8},
+    {"_SemiCompRisksPen_admm_po_cpp", (DL_FUNC) &_SemiCompRisksPen_admm_po_cpp, 9},
     {NULL, NULL, 0}
 };
 
