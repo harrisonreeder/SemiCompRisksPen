@@ -37,7 +37,7 @@ simID_PW <- function (id = NULL, x1, x2, x3, beta1.true, beta2.true, beta3.true,
     p2 <- dim(x2)[2]
     p3 <- dim(x3)[2]
     if (theta.true > 0) {
-      gamma.true <- rgamma(n, 1/theta.true, 1/theta.true)
+      gamma.true <- stats::rgamma(n, 1/theta.true, 1/theta.true)
     }
     if (theta.true == 0) {
       gamma.true <- rep(1, n)
@@ -92,7 +92,7 @@ simID_PW <- function (id = NULL, x1, x2, x3, beta1.true, beta2.true, beta3.true,
     delta2 <- rep(NA, n)
     y1 <- R
     y2 <- D
-    Cen <- runif(n, cens[1], cens[2])
+    Cen <- stats::runif(n, cens[1], cens[2])
     ind01 <- which(D < R & D < Cen)
     y1[ind01] <- D[ind01]
     delta1[ind01] <- 0
@@ -140,12 +140,12 @@ simID_PW <- function (id = NULL, x1, x2, x3, beta1.true, beta2.true, beta3.true,
 #' @export
 rpwexp <- function(n, rate=1, intervals=NULL, cumulative=FALSE){
   if(is.null(intervals)){
-    if (cumulative){return(cumsum(rexp(n,rate[1])))}else
+    if (cumulative){return(cumsum(stats::rexp(n,rate[1])))}else
       return(rexp(n,rate[1]))}
   k <- length(rate)
   if (k==1){
-    if(cumulative){return(cumsum(rexp(n,rate)))}else
-      return(rexp(n,rate))
+    if(cumulative){return(cumsum(stats::rexp(n,rate)))}else
+      return(stats::rexp(n,rate))
   }
   if (length(intervals) < k-1) stop("length(intervals) must be at least length(rate) - 1")
   tx <- 0
@@ -156,7 +156,7 @@ rpwexp <- function(n, rate=1, intervals=NULL, cumulative=FALSE){
   for(i in 1:k){
     nindx <- sum(indx)
     if (nindx==0) break
-    increment <- rexp(nindx,rate[i])
+    increment <- stats::rexp(nindx,rate[i])
     if (cumulative) times[indx] <- tx + cumsum(increment)
     else times[indx] <- tx + increment
     if (i<k){

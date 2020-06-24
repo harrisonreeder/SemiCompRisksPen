@@ -35,7 +35,7 @@ ns_d <- function (x, df = NULL, knots = NULL, intercept = FALSE, Boundary.knots 
     knots <- if (nIknots > 0L) {
       knots <- seq.int(from = 0, to = 1, length.out = nIknots +
                          2L)[-c(1L, nIknots + 2L)]
-      quantile(x[!outside], knots)
+      stats::quantile(x[!outside], knots)
     }
   } else{ nIknots <- length(knots) }
   Aknots <- sort(c(rep(Boundary.knots, 4L), knots)) #this code essentially puts two copies of each boundary on the ends, forming intervals
