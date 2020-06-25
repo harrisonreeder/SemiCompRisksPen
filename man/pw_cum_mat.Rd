@@ -9,13 +9,13 @@ pw_cum_mat(y, knots)
 \arguments{
 \item{y}{vector of event times.}
 
-\item{knots}{vector of cutpoints.}
+\item{knots}{increasing vector of cutpoints}
 }
 \value{
-a numeric matrix.
+a numeric matrix, with rows corresponding to elements of y.
 }
 \description{
 This helper function takes in a vector of event times, and
 generates a matrix dividing each time into a vector giving the time accrued within each
-interval denoted by a set of knots.
+interval between consecutive elements of a vector of knots.
 }

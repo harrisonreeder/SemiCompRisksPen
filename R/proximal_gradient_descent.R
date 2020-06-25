@@ -1,3 +1,60 @@
+#' Proximal Gradient Descent Algorithm
+#'
+#' This function runs a proximal gradient descent algorithm with backtracking similar to that presented by
+#'   Wang et al. (2014).
+#'
+#' @param para A numeric vector of parameters, arranged as follows:
+#'   the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameters,
+#'   then the \eqn{k_1+k_2+k_3+1} element corresponds to the gamma frailty log-variance parameter,
+#'   then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameters.
+#' @param y1,y2 Numeric vectors of length \eqn{n} with (possibly censored) non-terminal and terminal event times
+#' @param delta1,delta2 Numeric vectors of length \eqn{n}  with indicators of 1 if the event was observed and 0 otherwise
+#' @param Xmat1,Xmat2,Xmat3 Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.
+#' @param hazard String specifying the form of the baseline hazard.
+#' @param frailty Boolean indicating whether a gamma distributed subject-specific frailty should
+#'   be included. Currently this must be set to TRUE.
+#' @param model String specifying the transition assumption
+#' @param basis1,basis2,basis3,basis3_y1 Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
+#'   with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
+#'   Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
+#'   while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
+#'   Not used under Weibull model.
+#' @param dbasis1,dbasis2,dbasis3 Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
+#'   with piecewise/spline basis function derivative values at the corresponding \code{y1} and \code{y2} values.
+#'   Used only under Royston-Parmar model.
+#' @param penalty A string value indicating the form of parameterwise penalty
+#'   to apply. "lasso", "scad", and "mcp" are the options.
+#' @param lambda The strength of the parameterwise penalty. Either a single non-negative numeric value
+#'   for all three transitions, or a length 3 vector with elements corresponding to the three transitions.
+#' @param a For two-parameter penalty functions (e.g., scad and mcp), the second parameter.
+#' @param penalty_fusedcoef A string value indicating the form of the fusion penalty to apply
+#'   to the regression parameters. "none" and "fusedlasso" are the options.
+#' @param lambda_fusedcoef The strength of the fusion penalty on the regression parameters.
+#'   Either a single non-negative numeric value
+#'   for all three transitions, or a length 3 vector with elements corresponding to the three transitions.
+#' @param penalty_fusedbaseline A string value indicating the form of the fusion penalty to apply
+#'   to the baseline hazard parameters. "none" and "fusedlasso" are the options.
+#' @param lambda_fusedbaseline The strength of the fusion penalty on the regression parameters.
+#'   Either a single non-negative numeric value
+#'   for all three transitions, or a length 3 vector with elements corresponding to the three transitions.
+#' @param penweights_list A list of numeric vectors representing weights for each
+#'   penalty term (e.g., for adaptive lasso.) Elements of the list should be indexed by the
+#'   names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "fusedbaseline12", "fusedbaseline13", and "fusedbaseline23"
+#' @param mu_smooth A non-negative numeric value for the Nesterov smoothing parameter applied to the parameterwise penalty
+#' @param mu_smooth_fused A non-negative numeric value for the Nesterov smoothing parameter applied to the fusion penalty.
+#' @param step_size_init Positive numeric value for the initial step size.
+#' @param step_size_min Positive numeric value for the minimum allowable step size to allow during backtracking.
+#' @param step_size_max Positive numeric value for the maximum allowable step size to allow by size increase at each iteration.
+#' @param step_size_scale Positive numeric value for the multiplicative change in step size at each step of backtracking.
+#' @param ball_R Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
+#'   Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.
+#' @param maxit Positive integer maximum number of iterations.
+#' @param conv_crit String (possibly vector) giving the convergence criterion.
+#' @param conv_tol Positive numeric value giving the convergence tolerance for the chosen criterion.
+#' @param verbose Boolean indicating whether information about each iteration should be printed.
+#'
+#' @return A list.
+#' @export
 proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                       Xmat1 = matrix(nrow(length(y1)),ncol=0), #the default is a 'empty' matrix
                                       Xmat2 = matrix(nrow(length(y1)),ncol=0),

@@ -5,26 +5,7 @@
 #'   and specified Markov/semi-Markov transition assumption.
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
-#'
-#' @param para A numeric vector of parameters, arranged as follows:
-#'   the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameters,
-#'   then the \eqn{k_1+k_2+k_3+1} element corresponds to the gamma frailty log-variance parameter,
-#'   then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameters.
-#' @param y1,y2 Numeric vectors of length \eqn{n} with (possibly censored) non-terminal and terminal event times
-#' @param delta1,delta2 Numeric vectors of length \eqn{n}  with indicators of 1 if the event was observed and 0 otherwise
-#' @param Xmat1,Xmat2,Xmat3 Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.
-#' @param hazard String specifying the form of the baseline hazard.
-#' @param frailty Boolean indicating whether a gamma distributed subject-specific frailty should
-#'   be included. Currently this must be set to TRUE.
-#' @param model String specifying the transition assumption
-#' @param basis1,basis2,basis3,basis3_y1 Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-#'   with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
-#'   Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
-#'   while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
-#'   Not used under Weibull model.
-#' @param dbasis1,dbasis2,dbasis3 Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-#'   with piecewise/spline basis function derivative values at the corresponding \code{y1} and \code{y2} values.
-#'   Used only under Royston-Parmar model.
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric sum of negative log likelihood contributions.
 #' @export
@@ -124,7 +105,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric vector of same length as \code{para} with sum of gradient contributions
 #'   for the negative log likelihood.
@@ -228,7 +209,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric matrix with \eqn{n} rows and width same as length of \code{para} with gradient contributions
 #'   for the negative log likelihood.
@@ -270,7 +251,7 @@ ngrad_mat_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric square matrix with dimensions the same length as \code{para}
 #'   with sum of gradient contributions for the negative log likelihood.

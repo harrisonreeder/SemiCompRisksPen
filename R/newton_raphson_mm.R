@@ -1,3 +1,18 @@
+#' Newton-Type MM Algorithm
+#'
+#' This function runs a Newton-type MM (majorization-minimization) algorithm
+#'   following the algorithm of Oelker & Tutz (2017).
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param mm_epsilon Positive numeric tolerance parameter for smooth approximation
+#'   of absolute value function at 0.
+#' @param num_restarts Number of times to allow algorithm to restart if it reaches
+#'   a point where it can make no further progress.
+#' @param select_tol Positive numeric value for thresholding estimates to be equal to zero,
+#'   and for considering parameters fused close to be considered the same value.
+#'
+#' @return A list.
+#' @export
 newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
                               hazard, frailty, model,
                               penalty, lambda, a,

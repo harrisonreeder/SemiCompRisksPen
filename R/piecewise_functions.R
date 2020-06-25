@@ -6,7 +6,7 @@
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric sum of negative log likelihood contributions.
 #' @export
@@ -98,7 +98,7 @@ nlogLikPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric sum of negative log likelihood contributions.
 #' @export
@@ -184,7 +184,7 @@ nlogLikPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric vector of same length as \code{para} with sum of gradient contributions
 #'   for the negative log likelihood.
@@ -304,7 +304,7 @@ ngradPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
 #'   Typically, this function will not be used directly by the user, but as part of a
 #'   larger estimation procedure.
 #'
-#' @inheritParams nll_func
+#' @inheritParams proximal_gradient_descent
 #'
 #' @return Returns numeric vector of same length as \code{para} with sum of gradient contributions
 #'   for the negative log likelihood.

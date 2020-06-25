@@ -1,3 +1,14 @@
+#' Non-Monotone Accelerated Proximal Gradient Descent
+#'
+#' This function runs a non-monotone proximal gradient descent algorithm with Barzilai-Borwein
+#'   backtracking line search, following the algorithm of Li & Lin (2015).
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param step_size_init_x,step_size_init_y Positive numeric values for the initial step sizes.
+#' @param step_delta Positive numeric value for the parameter governing sufficient descent criterion.
+#'
+#' @return A list.
+#' @export
 proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                               Xmat1 = matrix(nrow(length(y1)),ncol=0), #the default is a 'empty' matrix
                                               Xmat2 = matrix(nrow(length(y1)),ncol=0),
