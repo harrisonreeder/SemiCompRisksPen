@@ -1,12 +1,25 @@
-##***********************************************##
-####FUNCTION TO GENERATE SEQUENCES OF ESTIMATES####
-##***********************************************##
-
-
-#a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
-#thoughtful way to maximize the pathwise connections between starting values and step sizes
-#with some adjustments tailored to each approach to optimization
-#ideally, the results of this function form the basis for the simulation outputs of interest
+#' Estimate Penalized Illness-Death Model Solution Path
+#'
+#' This function estimates penalized illness-death model results along a range of
+#'   penalty, fused penalty, and smoothing parameters.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @inheritParams proximal_gradient_descent_nmaccel
+#' @inheritParams newton_raphson_mm
+#' @param lambda_path Numeric sequence of decreasing regularization parameters
+#'   for the parameterwise penalties, along which the solution path runs.
+#'   Assumes a single shared penalty across transitions.
+#' @param lambda_fusedcoef_path Numeric sequence of increasing regularization parameters
+#'   for the fusion penalties.
+#' @param mu_smooth_path Numeric sequence of decreasing Nesterov smoothing parameters for the fusion penalties.
+#' @param fit_method String indicating which optimization method should be used at each step.
+#' @param warm_start Boolean indicating whether each step of the solution should start from
+#'   ending of previous (\code{TRUE}) or from the original starting point (\code{FALSE}).
+#' @param fusion_tol Numeric value indicating when to consider fused parameters
+#'   that are close to be considered the same value, for estimating degrees of freedom.
+#'
+#' @return A list.
+#' @export
 solution_path_function <- function(para, y1, y2, delta1, delta2,
                                    Xmat1 = matrix(nrow(length(y1)),ncol=0), #the default is a 'empty' matrix
                                    Xmat2 = matrix(nrow(length(y1)),ncol=0),
@@ -28,6 +41,13 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                    conv_crit = "omega",
                                    conv_tol=1e-6,
                                    verbose){
+
+
+  #a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
+  #thoughtful way to maximize the pathwise connections between starting values and step sizes
+  #with some adjustments tailored to each approach to optimization
+  #ideally, the results of this function form the basis for the simulation outputs of interest
+
 
   # browser()
 

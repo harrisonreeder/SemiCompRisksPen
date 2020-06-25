@@ -1,5 +1,21 @@
 ####HELPER KNOT AND BASIS FUNCTIONS####
 
+#' Generate List of Knot Location Vectors from Event Times
+#'
+#' This function creates a list containing three numeric vectors. Each numeric vector
+#'   is a sequence of increasing integers giving the location of knots used for
+#'   spline and piecewise baseline hazard specifications. This function
+#'   generates this list according to the conventions and recommended locations
+#'   of these knots, which depends on the choice of hazard specification, number
+#'   of knots requested, and distribution of observed event times.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param p01,p02,p03 Integers indicating how many parameters the model for each
+#'   transition baseline hazard should specify.
+#'
+#' @return A list of three increasing sequences of integers, each corresponding to
+#'   the knots for the flexible model on the corresponding transition baseline hazard.
+#' @export
 get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model){
 
   if(hazard=="bspline"){
@@ -48,8 +64,25 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 
 }
 
-#the exact form of the knots passed into this function come from the above function
+#' Get Basis Function Values for Flexible Hazard Specifications
+#'
+#' @param x Numeric vector of event times (e.g., \code{y1} or \code{y2}) at which
+#'   to generate basis function values.
+#' @param knots Increasing vector of integers corresponding to the knots used
+#'   in the desired spline or piecewise specification. Often an element of
+#'   list generated from \code{\link{get_default_knots_list}}.
+#' @inheritParams proximal_gradient_descent
+#' @param deriv Boolean for whether returned values should be from derivatives of
+#'   basis functions if \code{TRUE}, or original basis functions if \code{FALSE}.
+#'
+#' @return A matrix with each row corresponding to an element of the input, and
+#'   each column giving the corresponding basis function value.
+#' @export
 get_basis <- function(x,knots,hazard,deriv=FALSE){
+
+  #the exact form of the knots passed into this function come from the above function
+
+
   if(hazard=="bspline"){
     if(deriv){return(NULL)}
     basis_out <- splines::bs(x = x,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
@@ -74,12 +107,23 @@ get_basis <- function(x,knots,hazard,deriv=FALSE){
 }
 
 
-#generate starting values based on the chosen form of the baseline hazard.
+#' Get Starting Parameter Values
+#'
+#' A function to generate principled starting values for optimization, based on
+#'   model specifications.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param sparse_start Boolean indicating whether to set all regression parameters
+#'   to 0 if \code{TRUE}, or to pre-estimate them using univariate models if \code{FALSE}.
+#'
+#' @return A vector of starting parameter values.
+#' @export
 get_start <- function(y1,y2,delta1,delta2,
                       Xmat1,Xmat2,Xmat3,
                       basis1,basis2,basis3,basis3_y1,
                       dbasis1,dbasis2,dbasis3,
-                      hazard,frailty,model,sparse_start=FALSE){ #sparse_start tells whether to start with beta = 0
+                      hazard,frailty,model,sparse_start=FALSE){
+  #generate starting values based on the chosen form of the baseline hazard.
 
   # browser()
   #number of parameters in each arm dictated by number of covariate columns in each matrix

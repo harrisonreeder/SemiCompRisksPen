@@ -103,8 +103,7 @@ of absolute value function at 0.}
 \item{num_restarts}{Number of times to allow algorithm to restart if it reaches
 a point where it can make no further progress.}
 
-\item{select_tol}{Positive numeric value for thresholding estimates to be equal to zero,
-and for considering parameters fused close to be considered the same value.}
+\item{select_tol}{Positive numeric value for thresholding estimates to be equal to zero.}
 }
 \value{
 A list.
