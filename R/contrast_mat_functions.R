@@ -1,3 +1,17 @@
+#' Create List of Contrast Matrices for Parameter Fusion
+#'
+#' Creates list of numeric matrices corresponding to the fusion of blocks of parameters.
+#'   The list is indexed by pairs of parameter blocks being fused, i.e.,
+#'   \itemize{
+#'   \item \code{fusedcoef12},\code{fusedcoef13},\code{fusedcoef23} list elements correspond to
+#'     matrices that, when multiplied to the parameter vector, yield a vector of fused differences
+#'     between corresponding regression parameters between the stated transition hazards.
+#'   \item \code{fusedbaseline12},\code{fusedbaseline13},\code{fusedbaseline23} list elements
+#'     are as above, but fusing the baseline hazard parameters.
+#'   }
+#'
+#' @return Returns a list with elements named as above, each containing a numeric contrast matrix.
+#' @export
 contrast_mat_list <- function(nP0,nP1,nP2,nP3, #NEEDS UPDATE TO WORK WITH WEIBULL
                               penalty_fusedcoef,lambda_fusedcoef,
                               penalty_fusedbaseline,lambda_fusedbaseline,
@@ -132,25 +146,28 @@ contrast_mat_list <- function(nP0,nP1,nP2,nP3, #NEEDS UPDATE TO WORK WITH WEIBUL
 
 
 
-#FROM SMURF CODE "PENALTY_MATRICES"
-# Compute eigenvalue decomposition of t(pen_mat[[j]]) %*% pen_mat[[j]] for fused penalties
-# except "none", "lasso" and "grouplasso"
-#
-# pen_mat: (weighted) penalty matrix
-pen_mat_decomp <- function(pen.mat) {
-  pen.mat.aux <- list()
+pen_mat_decomp <- function(pen_mat) {
+
+  #FROM SMURF CODE "PENALTY_MATRICES"
+  # Compute eigenvalue decomposition of t(pen_mat[[j]]) %*% pen_mat[[j]] for fused penalties
+  # except "none", "lasso" and "grouplasso"
+  #
+  # pen_mat: (weighted) penalty matrix
+
+
+  pen_mat_aux <- list()
   # Return NULL if error
-  tmp <- tryCatch(eigen(t(pen.mat) %*% pen.mat), error = function(e) NULL)
+  tmp <- tryCatch(eigen(t(pen_mat) %*% pen_mat), error = function(e) NULL)
 
   if (!is.null(tmp)) {
     # Get eigenvectors and -values if eigen did not give an error
-    pen.mat.aux$Q <- tmp$vectors
-    pen.mat.aux$eigval <- tmp$values
+    pen_mat_aux$Q <- tmp$vectors
+    pen_mat_aux$eigval <- tmp$values
 
   } else {
     # eigen gave an error, use slower ADMM version (check happens when calling C++ code)
-    pen.mat.aux$Q <- as.matrix(0)
-    pen.mat.aux$eigval <- 0
+    pen_mat_aux$Q <- as.matrix(0)
+    pen_mat_aux$eigval <- 0
   }
-  return(pen.mat.aux)
+  return(pen_mat_aux)
 }

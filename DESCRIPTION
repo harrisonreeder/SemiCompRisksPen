@@ -8,7 +8,7 @@ Authors@R:
            email = "reeder.h@gmail.com",
            comment = c(ORCID = "0000-0001-8813-9127"))
 Description: This package provides penalized estimation methods for semi-competing risks outcomes.
-License: MIT + file LICENSE
+License: GPL-3
 Suggests: 
     testthat
 Encoding: UTF-8
@@ -21,6 +21,8 @@ LinkingTo:
     Rcpp,
     RcppArmadillo
 Imports: 
-    Rcpp,
+    Rcpp
+Depends:
     MASS,
-    Formula
+    Formula,
+    survival

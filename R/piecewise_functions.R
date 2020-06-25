@@ -1,3 +1,15 @@
+#' Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning the negative log-likelihood for the illness-death model,
+#'   under piecewise constant baseline hazard, gamma subject-specific frailty,
+#'   and semi-Markov transition assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric sum of negative log likelihood contributions.
+#' @export
 nlogLikPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
                                   Xmat1, Xmat2, Xmat3,
                                   basis1, basis2, basis3){
@@ -78,6 +90,18 @@ nlogLikPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
 }
 
 
+#' Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning the negative log-likelihood for the illness-death model,
+#'   under piecewise constant baseline hazard, gamma subject-specific frailty,
+#'   and Markov transition assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric sum of negative log likelihood contributions.
+#' @export
 nlogLikPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
                                  Xmat1 = NULL, Xmat2 = NULL, Xmat3 = NULL,
                                  basis1, basis2, basis3, basis3_y1){
@@ -152,6 +176,19 @@ nlogLikPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
 }
 
 
+#' Gradient of Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning the gradient of the negative log-likelihood for the illness-death model,
+#'   under piecewise constant baseline hazard, gamma subject-specific frailty,
+#'   and semi-Markov transition assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric vector of same length as \code{para} with sum of gradient contributions
+#'   for the negative log likelihood.
+#' @export
 ngradPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
                                 Xmat1 = NULL, Xmat2 = NULL, Xmat3 = NULL,
                                 basis1, basis2, basis3){
@@ -259,7 +296,19 @@ ngradPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
 
 
 
-
+#' Gradient of Negative Log-Likelihood Function for Illness-Death Model
+#'
+#' Function returning the gradient of the negative log-likelihood for the illness-death model,
+#'   under piecewise constant baseline hazard, gamma subject-specific frailty,
+#'   and Markov transition assumption.
+#'   Typically, this function will not be used directly by the user, but as part of a
+#'   larger estimation procedure.
+#'
+#' @inheritParams nll_func
+#'
+#' @return Returns numeric vector of same length as \code{para} with sum of gradient contributions
+#'   for the negative log likelihood.
+#' @export
 ngradPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
                                Xmat1 = NULL, Xmat2 = NULL, Xmat3 = NULL,
                                basis1, basis2, basis3, basis3_y1){
@@ -366,6 +415,17 @@ ngradPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
 
 # FUNCTION TO GET 'BASIS' MATRIX OF TIME ACCRUED IN EACH ARM ------------
 
+#' Generate Piecewise Constant Cumulative Hazard Matrix
+#'
+#' This helper function takes in a vector of event times, and
+#'   generates a matrix dividing each time into a vector giving the time accrued within each
+#'   interval between consecutive elements of a vector of knots.
+#'
+#' @param y vector of event times.
+#' @param knots increasing vector of cutpoints
+#'
+#' @return a numeric matrix, with rows corresponding to elements of y.
+#' @export
 pw_cum_mat <- function(y, knots){
   # browser()
 

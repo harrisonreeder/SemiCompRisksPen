@@ -60,7 +60,7 @@ Returns numeric sum of negative log likelihood contributions.
 \description{
 Function returning the negative log-likelihood for the illness-death model,
 under specified baseline hazard, and specified frailty,
-and specified Markov/semi-Markov assumption.
+and specified Markov/semi-Markov transition assumption.
 Typically, this function will not be used directly by the user, but as part of a
 larger estimation procedure.
 }
