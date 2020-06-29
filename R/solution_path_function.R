@@ -3,6 +3,10 @@
 #' This function estimates penalized illness-death model results along a range of
 #'   penalty, fused penalty, and smoothing parameters.
 #'
+#' This is a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
+#'   thoughtful way to maximize the pathwise connections between starting values and step sizes,
+#'   with some adjustments tailored to each approach to optimization.
+
 #' @inheritParams proximal_gradient_descent
 #' @inheritParams proximal_gradient_descent_nmaccel
 #' @inheritParams newton_raphson_mm
@@ -40,28 +44,30 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                    maxit=300,
                                    conv_crit = "omega",
                                    conv_tol=1e-6,
+                                   mm_epsilon=1e-6,
                                    verbose){
-
-
-  #a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
-  #thoughtful way to maximize the pathwise connections between starting values and step sizes
-  #with some adjustments tailored to each approach to optimization
-  #ideally, the results of this function form the basis for the simulation outputs of interest
-
 
   # browser()
 
+  #If lambda_path is NULL, set it equal to 0 (aka no parameterwise regularization)
+  #Otherwise, put it into matrix format
+  # (note, this admits a 3-column matrix to let different transitions have different values)
   lambda_path <- if(is.null(lambda_path)) as.matrix(0) else as.matrix(lambda_path)
   lambda_length <- nrow(lambda_path)
   colnames(lambda_path) <- paste0("lambda",1:ncol(lambda_path))
 
+  #If lambda_fusedcoef_path is NULL, set it equal to 0 (aka no fused regularization)
+  #Otherwise, put it into matrix format
+  # (note, this admits a 3-column matrix to let different transitions have different values)
   lambda_fusedcoef_path <- if(is.null(lambda_fusedcoef_path)) as.matrix(0) else as.matrix(lambda_fusedcoef_path)
   lambda_fusedcoef_length <- nrow(lambda_fusedcoef_path)
   colnames(lambda_fusedcoef_path) <- paste0("lambda_fusedcoef",1:ncol(lambda_fusedcoef_path))
 
+  #If mu_smooth_path is NULL, set it equal to 0 (aka no fused smoothing)
+  #Otherwise, put it into matrix format
   mu_smooth_path <- if(is.null(mu_smooth_path)) as.matrix(0) else as.matrix(mu_smooth_path)
   mu_smooth_length <- nrow(mu_smooth_path)
-  colnames(mu_smooth_path) <- "mu_smooth"
+  colnames(mu_smooth_path) <- "mu_smooth" #for now, implicit that there is only one column
 
 
   n <- length(y1)
@@ -78,12 +84,8 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
 
   #to correctly count number of iterations, we sum up number of iterations with no
-  if(fit_method == "smooth_grad"){
-    total_length <- lambda_length * lambda_fusedcoef_length * mu_smooth_length
-  } else {
-    total_length <- lambda_length*sum(lambda_fusedcoef_path %in% 0) +
-      lambda_length*sum(!(lambda_fusedcoef_path %in% 0)) * mu_smooth_length
-  }
+  total_length <- lambda_length*sum(lambda_fusedcoef_path %in% 0) + #total number of steps with no fusion
+    lambda_length*sum(!(lambda_fusedcoef_path %in% 0)) * mu_smooth_length #total number of fusion steps
 
   out_starts <- out_pen_ngrads <- out_ests <- matrix(nrow=total_length,
                                                      ncol=nPtot,dimnames=list(NULL,names(para)))
@@ -102,7 +104,6 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
   nll_pen_trace_mat <-  matrix(nrow=total_length,
                                ncol=maxit)
 
-  # out_starts <- out_info <- out_pen_ngrads <- out_control <- out_ics <- out_ests <- NULL
   iter <- 1
   ##ACTUALLY BEGIN THE PATH##
   ##***********************##
@@ -116,6 +117,8 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
   #OUTER LOOP: LOOPING THROUGH THE LAMBDA VALUES, GOVERNING PARAMETERWISE SPARSITY
   for(lambda_iter in 1:lambda_length){
     lambda <- lambda_path[lambda_iter,]
+
+    #Wang (2014) paper advises specific weaker tolerance earlier in the path, according to lambda value:
     # conv_tol <- if(lambda_iter==lambda_length) lambda/8 else lambda/4 #gotta be less than lambda_target/4, so we just halve it again.
 
     startVals_middle <- startVals_outer
@@ -135,8 +138,8 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
       #INNER LOOP: LOOPING THROUGH THE MU_SMOOTH VALUES, GOVERNING SMOOTH APPROXIMATION OF FUSION SPARSITY
       for(mu_smooth_iter in 1:mu_smooth_length){
 
-        #if there is no fusion, there should be no smoothing unless we're explicitly smoothing the parameterwise penalties
-        mu_smooth_fused <- if(fit_method != "smooth_grad" & lambda_fusedcoef==0) 0 else mu_smooth_path[mu_smooth_iter,]
+        #if there is no fusion, there should be no smoothing
+        mu_smooth_fused <- if(lambda_fusedcoef==0) 0 else mu_smooth_path[mu_smooth_iter,]
 
         if(fit_method=="prox_grad"){
           tempfit <- proximal_gradient_descent(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
@@ -147,7 +150,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                penalty=penalty, lambda=lambda, a=a,
                                                penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                                penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                               penweights_list=penweights_list, mu_smooth=0, mu_smooth_fused=mu_smooth_fused,
+                                               penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
                                                step_size_init=step_size_init_inner,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                                maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                ball_R=Inf, verbose=verbose)
@@ -161,27 +164,11 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                        penalty=penalty, lambda=lambda, a=a,
                                                        penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                                        penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                                       penweights_list=penweights_list, mu_smooth=0, mu_smooth_fused=mu_smooth_fused,
+                                                       penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
                                                        step_size_init_x=step_size_init_inner,step_size_init_y=step_size_init_inner,
                                                        step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                                        maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                        ball_R=Inf, verbose=verbose)
-        }
-        if(fit_method=="smooth_grad"){
-          tempfit <- smooth_gradient_descent(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                             Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                             hazard=hazard, frailty=frailty, model=model,
-                                             basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
-                                             dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
-                                             penalty=penalty, lambda=lambda, a=a,
-                                             penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                                             penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                             penweights_list=penweights_list, mu_smooth=mu_smooth_fused, mu_smooth_fused=mu_smooth_fused,
-                                             step_size_init=step_size_init_inner,
-                                             step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
-                                             maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol, method="grad",#method="BFGS", #method is currently assumed to be standard gradient
-                                             # ball_R=Inf, #currently not supported because it would require the prox function again.
-                                             verbose=verbose)
         }
         if(fit_method=="newton"){
           tempfit <- newton_raphson_mm(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
@@ -191,14 +178,14 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                        penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                        penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                                        penweights_list=penweights_list,
-                                       mm_epsilon=1e-6,
+                                       mm_epsilon=mm_epsilon,
                                        verbose=verbose, maxit=maxit,step_size_min=step_size_min,
                                        conv_crit=conv_crit,conv_tol=conv_tol,num_restarts=2)
         }
 
         #To prepare for the next iteration, let's update the inner loop inputs based on these results
         startVals_inner <- tempfit$estimate
-        if(fit_method %in%  c("prox","smooth_grad")){
+        if(fit_method %in%  c("prox")){
           step_size_init_inner <- tempfit$final_step_size
         }
 
@@ -296,7 +283,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
         #then the results are relevant for the next iteration of the outer loop
         if(warm_start & lambda_fusedcoef_iter==1 & mu_smooth_iter==1){
           startVals_outer <- tempfit$estimate
-          if(fit_method %in% c("prox","smooth_grad")){
+          if(fit_method %in% c("prox")){
             step_size_init_outer <- tempfit$final_step_size
           }
         }
@@ -304,7 +291,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
         #if this is the first time through this inner loop,
         #then the results are relevant for the next iteration of the middle loop
         if(warm_start & mu_smooth_iter==1){
-          if(fit_method %in% c("prox","smooth_grad")){
+          if(fit_method %in% c("prox")){
             step_size_init_middle <- tempfit$final_step_size
           }
         }
@@ -376,7 +363,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
               # plot_out_ests=plot_out_ests,
               out_control=out_control,
               hazard=hazard, frailty=frailty, model=model,
-              penalty=penalty, a=a, mm_epsilon=1e-6,
+              penalty=penalty, a=a, mm_epsilon=mm_epsilon,
               select_tol=select_tol, fusion_tol=fusion_tol,
               penalty_fusedcoef=penalty_fusedcoef,
               penalty_fusedbaseline=penalty_fusedbaseline,
