@@ -17,7 +17,7 @@ lasso_prox_internal <- function(beta,lambda,step_size,penweights){
 prox_func <- function(para, prev_para, nP1, nP2, nP3, step_size,
                       penalty, lambda, penweights_list,
                       pen_mat_w,pen_mat_w_eig=NULL,lambda_f_vec,
-                      mu_smooth, mu_smooth_fused, ball_R=Inf){
+                      mu_smooth_fused, ball_R=Inf){
 
   #perform proximal operator based on convex part of penalty term (following Yao (2018))
 
@@ -53,21 +53,18 @@ prox_func <- function(para, prev_para, nP1, nP2, nP3, step_size,
 
   prox_out <- para_fl #i think this could equivalently be para but whatever
 
-  #if we are smoothing the componentwise penalty, don't do any soft thresholding, otherwise do!
-  if(is.null(mu_smooth) || mu_smooth==0 ){
-    #break out the beta vectors from the larger parameter vector, using nP0 to correctly pad out the baseline hazard and theta parameters
-    if(nP1 != 0){
-      beta1 <- para_fl[(1+nP0):(nP0+nP1)]
-      prox_out[(1+nP0):(nP0+nP1)] <- lasso_prox_internal(beta=beta1,lambda=lambda1,step_size=step_size,penweights=penweights_list[["coef1"]])
-    }
-    if(nP2 != 0){
-      beta2 <- para_fl[(1+nP0+nP1):(nP0+nP1+nP2)]
-      prox_out[(1+nP0+nP1):(nP0+nP1+nP2)] <- lasso_prox_internal(beta=beta2,lambda=lambda2,step_size=step_size,penweights=penweights_list[["coef2"]])
-    }
-    if(nP3 != 0){
-      beta3 <- para_fl[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-      prox_out[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- lasso_prox_internal(beta=beta3,lambda=lambda3,step_size=step_size,penweights=penweights_list[["coef3"]])
-    }
+  #break out the beta vectors from the larger parameter vector, using nP0 to correctly pad out the baseline hazard and theta parameters
+  if(nP1 != 0){
+    beta1 <- para_fl[(1+nP0):(nP0+nP1)]
+    prox_out[(1+nP0):(nP0+nP1)] <- lasso_prox_internal(beta=beta1,lambda=lambda1,step_size=step_size,penweights=penweights_list[["coef1"]])
+  }
+  if(nP2 != 0){
+    beta2 <- para_fl[(1+nP0+nP1):(nP0+nP1+nP2)]
+    prox_out[(1+nP0+nP1):(nP0+nP1+nP2)] <- lasso_prox_internal(beta=beta2,lambda=lambda2,step_size=step_size,penweights=penweights_list[["coef2"]])
+  }
+  if(nP3 != 0){
+    beta3 <- para_fl[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
+    prox_out[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- lasso_prox_internal(beta=beta3,lambda=lambda3,step_size=step_size,penweights=penweights_list[["coef3"]])
   }
 
   #now, add projection of the covariates onto the ball of radius R to potentially accomodate the constraints of Wang (2014)

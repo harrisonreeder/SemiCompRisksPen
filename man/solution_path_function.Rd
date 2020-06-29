@@ -45,6 +45,7 @@ solution_path_function(
   maxit = 300,
   conv_crit = "omega",
   conv_tol = 1e-06,
+  mm_epsilon = 1e-06,
   verbose
 )
 }
@@ -168,6 +169,9 @@ that are close to be considered the same value, for estimating degrees of freedo
 
 \item{conv_tol}{Positive numeric value giving the convergence tolerance for the chosen criterion.}
 
+\item{mm_epsilon}{Positive numeric tolerance parameter for smooth approximation
+of absolute value function at 0.}
+
 \item{verbose}{Boolean indicating whether information about each iteration should be printed.}
 }
 \value{
@@ -176,4 +180,9 @@ A list.
 \description{
 This function estimates penalized illness-death model results along a range of
 penalty, fused penalty, and smoothing parameters.
+}
+\details{
+This is a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
+thoughtful way to maximize the pathwise connections between starting values and step sizes,
+with some adjustments tailored to each approach to optimization.
 }

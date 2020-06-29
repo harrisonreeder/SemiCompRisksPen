@@ -31,7 +31,6 @@ proximal_gradient_descent_nmaccel(
   penalty_fusedbaseline,
   lambda_fusedbaseline,
   penweights_list,
-  mu_smooth,
   mu_smooth_fused,
   step_size_min = 1e-06,
   step_size_max = 1e+06,
@@ -134,8 +133,6 @@ for all three transitions, or a length 3 vector with elements corresponding to t
 \item{penweights_list}{A list of numeric vectors representing weights for each
 penalty term (e.g., for adaptive lasso.) Elements of the list should be indexed by the
 names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "fusedbaseline12", "fusedbaseline13", and "fusedbaseline23"}
-
-\item{mu_smooth}{A non-negative numeric value for the Nesterov smoothing parameter applied to the parameterwise penalty}
 
 \item{mu_smooth_fused}{A non-negative numeric value for the Nesterov smoothing parameter applied to the fusion penalty.}
 
