@@ -10,6 +10,9 @@
 #'     are as above, but fusing the baseline hazard parameters.
 #'   }
 #'
+#' @inheritParams proximal_gradient_descent
+#' @param nP0,nP1,nP2,nP3 Number of parameters.
+#'
 #' @return Returns a list with elements named as above, each containing a numeric contrast matrix.
 #' @export
 contrast_mat_list <- function(nP0,nP1,nP2,nP3, #NEEDS UPDATE TO WORK WITH WEIBULL

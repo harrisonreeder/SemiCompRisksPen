@@ -17,6 +17,29 @@ contrast_mat_list(
   penweights_list
 )
 }
+\arguments{
+\item{nP0, nP1, nP2, nP3}{Number of parameters.}
+
+\item{penalty_fusedcoef}{A string value indicating the form of the fusion penalty to apply
+to the regression parameters. "none" and "fusedlasso" are the options.}
+
+\item{lambda_fusedcoef}{The strength of the fusion penalty on the regression parameters.
+Either a single non-negative numeric value
+for all three transitions, or a length 3 vector with elements corresponding to the three transitions.}
+
+\item{penalty_fusedbaseline}{A string value indicating the form of the fusion penalty to apply
+to the baseline hazard parameters. "none" and "fusedlasso" are the options.}
+
+\item{lambda_fusedbaseline}{The strength of the fusion penalty on the regression parameters.
+Either a single non-negative numeric value
+for all three transitions, or a length 3 vector with elements corresponding to the three transitions.}
+
+\item{hazard}{String specifying the form of the baseline hazard.}
+
+\item{penweights_list}{A list of numeric vectors representing weights for each
+penalty term (e.g., for adaptive lasso.) Elements of the list should be indexed by the
+names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "fusedbaseline12", "fusedbaseline13", and "fusedbaseline23"}
+}
 \value{
 Returns a list with elements named as above, each containing a numeric contrast matrix.
 }
