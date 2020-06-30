@@ -67,7 +67,7 @@ prox_func <- function(para, prev_para, nP1, nP2, nP3, step_size,
     prox_out[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] <- lasso_prox_internal(beta=beta3,lambda=lambda3,step_size=step_size,penweights=penweights_list[["coef3"]])
   }
 
-  #now, add projection of the covariates onto the ball of radius R to potentially accomodate the constraints of Wang (2014)
+  #now, add projection of the covariates onto the ball of radius R to potentially accommodate the constraints of Wang (2014)
   #this is equivalent to ridge regression
   if(nP1 + nP2 + nP3 > 0 && !is.null(ball_R) && !is.infinite(ball_R)){
     temp_norm2 <- sum(prox_out[(1+nP0):(nP0+nP1+nP2+nP3)]^2)

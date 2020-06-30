@@ -63,7 +63,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
   # if (length(noNms <- namc[!namc %in% nmsC])){
   #   warning("unknown names in control: ", paste(noNms, collapse=", "))
   # }
-  if(!all(conv_crit %in% c("est_change_norm","max_est_change","nll_pen_change","omega"))){
+  if(!all(conv_crit %in% c("est_change_norm","max_est_change","nll_pen_change","suboptimality"))){
     stop("unknown convergence criterion.")
   }
   if(maxit <0){
@@ -430,7 +430,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
     if(verbose){
       print(paste("max change in ests",max_change))
       print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_change]))
-      # print(paste("omega_t (max norm of prox grad)", omega_t))
+      # print(paste("suboptimality (max norm of prox grad)", subopt_t))
       print(paste("l2 norm of change", norm_change)) #essentially a change in estimates norm
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
@@ -440,7 +440,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
 
 
-    if("omega" %in% conv_crit){
+    if("suboptimality" %in% conv_crit){
       #convergence criterion given in Wang (2014)
       #note the division by n to put it on the mean scale--gradient descent works better then!
       ngrad_xcurr <- smooth_obj_grad_func(para=xcurr,
@@ -452,15 +452,16 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                           penalty=penalty,lambda=lambda, a=a,
                                           penweights_list=penweights_list,
                                           pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
-      #convergence criterion given in Wang (2014)
-      omega_t <- max(abs(prox_func(para=ngrad_xcurr, prev_para = xprev,
+
+      #suboptimality convergence criterion given as omega in Wang (2014)
+      subopt_t <- max(abs(prox_func(para=ngrad_xcurr, prev_para = xprev,
                                    nP1=nP1,nP2=nP2,nP3=nP3,step_size=1,
                                    penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                    pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                    lambda_f_vec=lambda_f_vec,
                                    mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
-      if(verbose){print(paste("omega_t (max norm of prox grad)", omega_t))}
-      if(omega_t < conv_tol){
+      if(verbose){print(paste("suboptimality (max norm of prox grad)", subopt_t))}
+      if(subopt_t < conv_tol){
         fit_code <- 2
         break
       }

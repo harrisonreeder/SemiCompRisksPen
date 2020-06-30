@@ -43,7 +43,7 @@ solution_path_function(
   step_size_scale = 0.5,
   step_delta = 0.5,
   maxit = 300,
-  conv_crit = "omega",
+  conv_crit = "nll_pen_change",
   conv_tol = 1e-06,
   mm_epsilon = 1e-06,
   verbose

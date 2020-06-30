@@ -38,7 +38,7 @@ proximal_gradient_descent(
   step_size_scale = 1/2,
   ball_R = Inf,
   maxit = 300,
-  conv_crit = "omega",
+  conv_crit = "nll_pen_change",
   conv_tol = if (lambda > 0) lambda/4 else 1e-06,
   verbose
 )

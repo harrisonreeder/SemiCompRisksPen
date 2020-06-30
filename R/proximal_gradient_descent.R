@@ -67,7 +67,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                       penweights_list, mu_smooth_fused,
                                       step_size_init=1, step_size_min = 1e-6, step_size_max = 1e6,
                                       step_size_scale=1/2, ball_R=Inf, maxit=300,
-                                      conv_crit = "omega", conv_tol=if(lambda>0) lambda/4 else 1e-6,
+                                      conv_crit = "nll_pen_change", conv_tol=if(lambda>0) lambda/4 else 1e-6,
                                       verbose){
 
 
@@ -326,8 +326,9 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                         penweights_list=penweights_list,
                                         pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
 
-    #convergence criterion given in Wang (2014)
-    omega_t <- max(abs(prox_func(para=ngrad_xcurr, prev_para = xprev,
+    #suboptimality convergence criterion given as omega in Wang (2014)
+    #I actually think this might be incorrect IF we use inexact prox fused lasso, or if we have a ball constraint....
+    subopt_t <- max(abs(prox_func(para=ngrad_xcurr, prev_para = xprev,
                                  nP1=nP1,nP2=nP2,nP3=nP3,step_size=1,
                                  penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                  pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
@@ -340,15 +341,15 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
 
     if(verbose){
       print(paste("max change in ests",max_change))
-      print(paste("omega_t (max norm of prox grad)", omega_t))
+      print(paste("suboptimality (max norm of prox grad)", subopt_t))
       print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_change]))
       print(paste("max norm of change", norm_change)) #essentially a change in estimates norm
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
     }
 
-    if("omega" %in% conv_crit){
-      if(omega_t <= conv_tol){break} #conv_tol is called 'epsilon' in the Wang (2014) paper
+    if("suboptimality" %in% conv_crit){
+      if(subopt_t <= conv_tol){break} #conv_tol is called 'epsilon' in the Wang (2014) paper
     }
     if("est_change_norm" %in% conv_crit){
       if(norm_change < conv_tol){

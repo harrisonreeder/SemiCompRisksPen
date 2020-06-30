@@ -10,7 +10,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                               warm_start=TRUE, step_size_min=1e-6, step_size_max=1e6, step_size_init=1,
                               step_size_scale=0.5, #no checks implemented on these values!!
                               step_delta=0.5, maxit=300,
-                              conv_crit = "omega", conv_tol=1e-6,
+                              conv_crit = "nll_pen_change", conv_tol=1e-6,
                               verbose=FALSE){
 
   # To start, I'm going to implement the PISTA algorithm of Wang et al (2014).  I know it is somewhat deficient compared to

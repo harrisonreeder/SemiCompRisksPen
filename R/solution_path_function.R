@@ -19,6 +19,8 @@
 #' @param fit_method String indicating which optimization method should be used at each step.
 #' @param warm_start Boolean indicating whether each step of the solution should start from
 #'   ending of previous (\code{TRUE}) or from the original starting point (\code{FALSE}).
+#' @param extra_starts numeric indicating how many additional optimization runs from random start values
+#'   should be performed at each grid point.
 #' @param fusion_tol Numeric value indicating when to consider fused parameters
 #'   that are close to be considered the same value, for estimating degrees of freedom.
 #'
@@ -35,14 +37,14 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                    penalty_fusedcoef, lambda_fusedcoef_path,
                                    penalty_fusedbaseline="none", lambda_fusedbaseline=0, #idk what to do about the baseline fusing, for now I skip
                                    penweights_list, mu_smooth_path, ball_R=Inf,
-                                   fit_method, warm_start=TRUE,
+                                   fit_method, warm_start=TRUE, extra_starts=0,
                                    select_tol=1e-4, fusion_tol = 1e-3,
                                    step_size_min=1e-6, step_size_max=1e6,
                                    step_size_init=1,
                                    step_size_scale=0.5, #no checks implemented on these values!!
                                    step_delta=0.5,
                                    maxit=300,
-                                   conv_crit = "omega",
+                                   conv_crit = "nll_pen_change",
                                    conv_tol=1e-6,
                                    mm_epsilon=1e-6,
                                    verbose){
@@ -131,8 +133,12 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
       startVals_inner <- startVals_middle
       step_size_init_inner <- step_size_init_middle
 
+      extra_start_iter <- 1
+
       if(verbose){
-        print(paste0("step: ",lambda_iter, " lambda: ",lambda," lambda_fusedcoef: ",lambda_fusedcoef))#, " mu_smooth_fused: ",mu_smooth_fused))
+        print(paste0("step: ",lambda_iter,
+                     " lambda: ",lambda,
+                     " lambda_fusedcoef: ",lambda_fusedcoef))#, " mu_smooth_fused: ",mu_smooth_fused, " extra_start: ", extra_start_iter))
       }
 
       #INNER LOOP: LOOPING THROUGH THE MU_SMOOTH VALUES, GOVERNING SMOOTH APPROXIMATION OF FUSION SPARSITY
