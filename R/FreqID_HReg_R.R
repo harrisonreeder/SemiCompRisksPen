@@ -1,7 +1,31 @@
-####WRAPPER FUNCTION FOR REGULARIZED ESTIMATION####
-##***********************************************##
-
-#wrapper function for fitting a model for a single choice of lambdas, and taking the best of a number of different methods
+#' Fit Parametric Frailty Illness-Death Model for Semi-Competing Risks Data
+#'
+#' @inheritParams proximal_gradient_descent
+#' @inheritParams newton_raphson_mm
+#' @param Formula a Formula object, with the outcome on the left of a
+#'   ~, and covariates on the right. It is of the form, time to non-terminal
+#'   event + corresponding censoring indicator | time to terminal event
+#'   + corresponding censoring indicator ~ covariates for h_1 |
+#'   covariates for h_2 | covariates for h_3: i.e., y_1 + delta_1 | y_2 + delta_2 ~ x_1 | x_2 | x_3.
+#' @param data a data.frame in which to interpret the variables named in Formula.
+#' @param na.action how NAs are treated. See model.frame.
+#' @param subset a specification of the rows to be used: defaults to all rows. See model.frame.
+#' @param knots_list Used for hazard specifications besides Weibull, a
+#'   list of three increasing sequences of integers, each corresponding to
+#'   the knots for the flexible model on the corresponding transition baseline hazard. If
+#'   \code{NULL}, will be created by \code{get_default_knots_list}.
+#' @param startVals A numeric vector of parameter starting values, arranged as follows:
+#'   the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameters,
+#'   then the \eqn{k_1+k_2+k_3+1} element corresponds to the gamma frailty log-variance parameter,
+#'   then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameters.
+#'   If set to \code{NULL}, will be generated automatically using \code{get_start}.
+#' @param optimization_method vector of optimization methods to apply. Method achieving lowest objective function
+#'   will be final reported result.
+#' @param fusion_tol Positive numeric value for thresholding estimates that are close
+#'   to being considered fused, for the purposes of estimating degrees of freedom.
+#'
+#' @return A list.
+#' @export
 FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                           hazard=c("weibull"),frailty=TRUE,model, knots_list = NULL,
                           penalty=c("scad","mcp","lasso"), lambda, a=NULL, mm_epsilon=1e-8,
@@ -9,9 +33,15 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                           penalty_fusedbaseline=c("none","fusedlasso"), lambda_fusedbaseline=0,
                           penweights_list=list(), verbose=FALSE, startVals=NULL,
                           # randomize_start=FALSE,randomize_seed=NULL,
-                          est_var=FALSE,optimization_method="prox_grad",select_tol=1e-04,fusion_tol=1e-3,
+                          optimization_method="prox_grad",select_tol=1e-04,fusion_tol=1e-3,
                           maxit=300, step_size_init=1, step_size_min=1e-6, step_size_max=1e6,step_size_scale=0.5,
                           conv_crit="nll_pen_change", conv_tol=1e-7, num_restarts=2){
+
+  ####WRAPPER FUNCTION FOR REGULARIZED ESTIMATION####
+  ##***********************************************##
+
+  #wrapper function for fitting a model for a single choice of lambdas, and taking the best of a number of different methods
+
 
   ##INITIALIZE OPTIONS##
   ##******************##
