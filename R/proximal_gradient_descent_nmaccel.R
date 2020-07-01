@@ -422,17 +422,17 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
     ##Check for convergence##
     ##*********************##
 
-    max_change <- max(abs(xcurr-xprev))
-    norm_change <- sqrt(sum((xcurr-xprev)^2))
+    max_est_change <- max(abs(xcurr-xprev))
+    norm_est_change <- sqrt(sum((xcurr-xprev)^2))
     nll_pen_change <- nll_pen_xnext-nll_pen_xcurr
 
 
 
     if(verbose){
-      print(paste("max change in ests",max_change))
-      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_change]))
+      print(paste("max change in ests",max_est_change))
+      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_est_change]))
       # print(paste("suboptimality (max norm of prox grad)", subopt_t))
-      print(paste("l2 norm of change", norm_change)) #essentially a change in estimates norm
+      print(paste("l2 norm of change", norm_est_change)) #essentially a change in estimates norm
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
     }
@@ -502,6 +502,27 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
   ##Compute traits of final estimates##
   ##*********************************##
 
+  #convergence criterion given in Wang (2014)
+  #note the division by n to put it on the mean scale--gradient descent works better then!
+  ngrad_xcurr <- smooth_obj_grad_func(para=xcurr,
+                                      y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                      Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                      hazard=hazard, frailty=frailty, model=model,
+                                      basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
+                                      dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
+                                      penalty=penalty,lambda=lambda, a=a,
+                                      penweights_list=penweights_list,
+                                      pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
+
+  #suboptimality convergence criterion given as omega in Wang (2014)
+  subopt_t <- max(abs(prox_func(para=ngrad_xcurr, prev_para = xprev,
+                                nP1=nP1,nP2=nP2,nP3=nP3,step_size=1,
+                                penalty=penalty,lambda=lambda, penweights_list=penweights_list,
+                                pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
+                                lambda_f_vec=lambda_f_vec,
+                                mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
+
+
   finalVals <- as.numeric(xnext)
   names(finalVals) <- names(para)
 
@@ -535,6 +556,10 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                lambda_f_vec=lambda_f_vec, mu_smooth_fused = mu_smooth_fused,
                                ball_R=ball_R)
 
+
+
+
+
   ##Return list of final objects##
   ##****************************##
 
@@ -555,6 +580,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                            step_size_scale=step_size_scale,
                            conv_crit=conv_crit,conv_tol=conv_tol,
                            maxit=maxit),
+              conv_stats=c(max_est_change=max_est_change,norm_est_change=norm_est_change,nll_pen_change=nll_pen_change,subopt=subopt_t),
               ball_R=ball_R,
               final_step_size=step_size_x,
               final_step_size_x=step_size_x,
