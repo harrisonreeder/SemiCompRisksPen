@@ -102,7 +102,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                           colnames(lambda_fusedcoef_path),
                                           colnames(mu_smooth_path),"ball_R")))
   out_control <- matrix(nrow=total_length,
-                        ncol=3,dimnames=list(NULL,c("niter","fit_code","final_step_size")))
+                        ncol=4,dimnames=list(NULL,c("niter","fit_code","final_step_size","best_start_iter")))
   nll_pen_trace_mat <-  matrix(nrow=total_length,
                                ncol=maxit)
 
@@ -123,6 +123,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
     #Wang (2014) paper advises specific weaker tolerance earlier in the path, according to lambda value:
     # conv_tol <- if(lambda_iter==lambda_length) lambda/8 else lambda/4 #gotta be less than lambda_target/4, so we just halve it again.
 
+
     startVals_middle <- startVals_outer
     step_size_init_middle <- step_size_init_outer
 
@@ -133,8 +134,6 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
       startVals_inner <- startVals_middle
       step_size_init_inner <- step_size_init_middle
 
-      extra_start_iter <- 1
-
       if(verbose){
         print(paste0("step: ",lambda_iter,
                      " lambda: ",lambda,
@@ -144,164 +143,182 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
       #INNER LOOP: LOOPING THROUGH THE MU_SMOOTH VALUES, GOVERNING SMOOTH APPROXIMATION OF FUSION SPARSITY
       for(mu_smooth_iter in 1:mu_smooth_length){
 
-        #if there is no fusion, there should be no smoothing
-        mu_smooth_fused <- if(lambda_fusedcoef==0) 0 else mu_smooth_path[mu_smooth_iter,]
+        #monitor to track which random start achieves the lowest objective value
+        best_nll_pen <- Inf
 
-        if(fit_method=="prox_grad"){
-          tempfit <- proximal_gradient_descent(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                               Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                               hazard=hazard, frailty=frailty, model=model,
-                                               basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
-                                               dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
-                                               penalty=penalty, lambda=lambda, a=a,
-                                               penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                                               penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                               penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
-                                               step_size_init=step_size_init_inner,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
-                                               maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                               ball_R=Inf, verbose=verbose)
-        }
-        if(fit_method=="prox_grad_nmaccel"){
-          tempfit <- proximal_gradient_descent_nmaccel(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                                       Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                                       hazard=hazard, frailty=frailty, model=model,
-                                                       basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
-                                                       dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
-                                                       penalty=penalty, lambda=lambda, a=a,
-                                                       penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                                                       penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                                       penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
-                                                       step_size_init_x=step_size_init_inner,step_size_init_y=step_size_init_inner,
-                                                       step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
-                                                       maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                                       ball_R=Inf, verbose=verbose)
-        }
-        if(fit_method=="newton"){
-          tempfit <- newton_raphson_mm(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                       Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                       hazard=hazard, frailty=frailty, model=model,
-                                       penalty=penalty, lambda=lambda, a=a,
-                                       penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
-                                       penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
-                                       penweights_list=penweights_list,
-                                       mm_epsilon=mm_epsilon,
-                                       verbose=verbose, maxit=maxit,step_size_min=step_size_min,
-                                       conv_crit=conv_crit,conv_tol=conv_tol,num_restarts=2)
-        }
+        #INNER INNER LOOP: LOOPING THROUGH EXTRA START VALUES
+          #Unfortunately this sort of disrupts the point of having multiple mu_smooth values, but because we're
+          #moving away from that approach anyways to a single mu_smooth value, then this is fine.
+        for(extra_start_iter in 1:(extra_starts+1)){
 
-        #To prepare for the next iteration, let's update the inner loop inputs based on these results
-        startVals_inner <- tempfit$estimate
-        if(fit_method %in%  c("prox")){
-          step_size_init_inner <- tempfit$final_step_size
-        }
-
-        ##Now, let's COMPUTE SOME USEFUL FIT STATISTICS based on this fit##
-        ##***************************************************************##
-        final_nll <- tempfit$final_nll
-
-        beta1_selected <- if(nP1 != 0) startVals_inner[(1+nP0):(nP0+nP1)] else numeric(0)
-        nP1_selected <- sum(beta1_selected != 0)
-
-        beta2_selected <- if(nP2 != 0) startVals_inner[(1+nP0+nP1):(nP0+nP1+nP2)] else numeric(0)
-        nP2_selected <- sum(beta2_selected != 0)
-
-        beta3_selected <- if(nP3 != 0) startVals_inner[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] else numeric(0)
-        nP3_selected <- sum(beta3_selected != 0)
-
-        nPtot_selected <- nP0 + nP1_selected + nP2_selected + nP3_selected
-
-        tempaic <- 2*final_nll + 2* nPtot_selected
-        tempbic <- 2*final_nll + log(n) * nPtot_selected
-        tempgcv <- final_nll/(n^2*(1-nPtot_selected/n)^2)
-
-        # The provisional idea for degrees of freedom is to take the number of unique nonzero estimates, e.g.,
-        # nPtot_selected_unique <- sum(unique(finalVals_selected) != 0)
-        #but here we use a tolerance because we can't get exact equality
-        #NOTE THIS DOES NOT INCORPORATE POTENTIAL EQUALITY OF BASELINE PARAMETERS
-        #ALSO IT ASSUMES THE SAME COVARIATES IN THE SAME ORDER ACROSS ALL THREE HAZARDSSSS!!!
-        if(nP1==nP2 & nP2==nP3){
-          nPtot_unique <- nP0 + sum(beta1_selected != 0 &
-                                      abs(beta1_selected - beta2_selected) > fusion_tol &
-                                      abs(beta1_selected - beta3_selected) > fusion_tol) +
-            sum(beta2_selected != 0 &
-                  abs(beta2_selected - beta3_selected) > fusion_tol) +
-            sum(beta3_selected != 0)
-
-          #currently, these account for fusion in the 'degrees of freedom' by counting unique parameters
-          tempaic_unique <- 2*final_nll + 2* nPtot_unique
-          tempbic_unique <- 2*final_nll + log(n) * nPtot_unique
-          tempgcv_unique <- final_nll/(n^2*(1-nPtot_unique/n)^2)
-        } else{
-          nPtot_unique <- tempaic_unique <- tempbic_unique <- tempgcv_unique <- NA
-        }
-
-        #alternative definition of degrees of freedom from Sennhenn-Reulen & Kneib via Gray (1993)
-        # browser()
-        if(!is.null(tempfit$final_nhess)){
-          final_nhess_nopen <- nhess_func(para=startVals_inner, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                          Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                          hazard=hazard, frailty=frailty, model=model)
-          final_cov <- tryCatch(solve(tempfit$final_nhess),
-                                error=function(cnd){
-                                  message(cnd)
-                                  cat("\n")
-                                  return(NULL)
-                                })
-          if(!is.null(final_cov)){
-            df_est <- sum(diag( final_nhess_nopen %*% final_cov ))
+          #if this is the first time through, admit the warm start approach, otherwise randomize the start value
+          #and reset the step size to the global default
+          if(extra_start_iter == 1){
+            startVals_inner_temp <- startVals_inner
+            step_size_init_inner_temp <- step_size_init_inner
           } else{
-            df_est <- NA
+            #Here I'm basing my perturbed start values based off of the 'middle' starting values
+            startVals_inner_temp <- (startVals_middle + rnorm(n = length(startVals_middle),mean = 0,sd=0.7)) *
+              runif(n = length(startVals_middle),min = 0.9, max = 1.1) #adding random multiplicative and additive noise
+            step_size_init_inner_temp <- step_size_init
           }
 
-          tempaic_estdf <- 2*final_nll + 2* df_est
-          tempbic_estdf <- 2*final_nll + log(n) * df_est
-          tempgcv_estdf <- final_nll/(n^2*(1-df_est/n)^2)
+          #if there is no fusion, there should be no smoothing
+          mu_smooth_fused <- if(lambda_fusedcoef==0) 0 else mu_smooth_path[mu_smooth_iter,]
 
-        } else{
-          df_est <- tempaic_estdf <- tempbic_estdf <- tempgcv_estdf <- NA
-        }
+          if(fit_method=="prox_grad"){
+            tempfit <- proximal_gradient_descent(para=startVals_inner_temp, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                                 Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                                 hazard=hazard, frailty=frailty, model=model,
+                                                 basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
+                                                 dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
+                                                 penalty=penalty, lambda=lambda, a=a,
+                                                 penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
+                                                 penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
+                                                 penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
+                                                 step_size_init=step_size_init_inner,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
+                                                 maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
+                                                 ball_R=Inf, verbose=verbose)
+          }
+          if(fit_method=="prox_grad_nmaccel"){
+            tempfit <- proximal_gradient_descent_nmaccel(para=startVals_inner_temp, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                                         Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                                         hazard=hazard, frailty=frailty, model=model,
+                                                         basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
+                                                         dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
+                                                         penalty=penalty, lambda=lambda, a=a,
+                                                         penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
+                                                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
+                                                         penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
+                                                         step_size_init_x=step_size_init_inner,step_size_init_y=step_size_init_inner,
+                                                         step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
+                                                         maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
+                                                         ball_R=Inf, verbose=verbose)
+          }
+          if(fit_method=="newton"){
+            tempfit <- newton_raphson_mm(para=startVals_inner_temp, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                         Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                         hazard=hazard, frailty=frailty, model=model,
+                                         penalty=penalty, lambda=lambda, a=a,
+                                         penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
+                                         penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
+                                         penweights_list=penweights_list,
+                                         mm_epsilon=mm_epsilon,
+                                         verbose=verbose, maxit=maxit,step_size_min=step_size_min,
+                                         conv_crit=conv_crit,conv_tol=conv_tol,num_restarts=2)
+          }
 
-        out_info[iter,] <- c(lambda,lambda_fusedcoef, mu_smooth_fused, ball_R)
-        out_ests[iter,] <- tempfit$estimate
-        out_pen_ngrads[iter,] <- as.vector(tempfit$final_ngrad_pen)
-        out_ics[iter,] <- c(tempfit$final_nll, tempfit$final_nll_pen,
-                            nPtot, nPtot_selected, nPtot_unique, df_est,
-                            tempaic, tempaic_unique,tempaic_estdf,
-                            tempbic_unique,tempbic,tempbic_estdf,
-                            tempgcv, tempgcv_unique,tempgcv_estdf)
-        out_control[iter,] <- c(tempfit$niter,tempfit$fit_code,tempfit$final_step_size)
-        out_starts[iter,] <- startVals_inner
-        nll_pen_trace_mat[iter, ] <- tempfit$nll_pen_trace
-        # out_info <- rbind(out_info,c(lambda,lambda_fusedcoef, mu_smooth_fused=mu_smooth_fused, ball_R=ball_R))
-        # out_ests <- rbind(out_ests,tempfit$estimate)
-        # out_pen_ngrads <- rbind(out_pen_ngrads,as.vector(tempfit$final_ngrad_pen))
-        # out_ics <- rbind(out_ics,c(nll=tempfit$final_nll, nll_pen=tempfit$final_nll_pen,
-        #                            nPtot_selected=nPtot_selected,
-        #                            nPtot_unique=nPtot_unique, df_est=df_est,
-        #                            AIC=tempaic, AIC_unique=tempaic_unique,AIC_estdf=tempaic_estdf,
-        #                            BIC_unique=tempbic_unique,BIC=tempbic,BIC_estdf=tempbic_estdf,
-        #                            GCV=tempgcv, GCV_unique=tempgcv_unique,GCV_estdf=tempgcv_estdf))
-        # out_control <- rbind(out_control,c(niter=tempfit$niter,fit_code=tempfit$fit_code,final_step_size=tempfit$final_step_size))
-        # out_starts <- rbind(out_starts,startVals_inner)
+          #If this random start has reached a better value than the previous start, then update all of the resulting outputs
+          if(tempfit$final_nll_pen < best_nll_pen){
+            if(verbose){print(paste0("new best value found from start: ",extra_start_iter))}
+            best_nll_pen <- tempfit$final_nll_pen
 
+            ##Now, let's COMPUTE SOME USEFUL FIT STATISTICS based on this fit##
+            ##***************************************************************##
+            final_nll <- tempfit$final_nll
 
-        #if this is the first time through this middle/inner combo,
-        #then the results are relevant for the next iteration of the outer loop
-        if(warm_start & lambda_fusedcoef_iter==1 & mu_smooth_iter==1){
-          startVals_outer <- tempfit$estimate
-          if(fit_method %in% c("prox")){
-            step_size_init_outer <- tempfit$final_step_size
+            beta1_selected <- if(nP1 != 0) tempfit$estimate[(1+nP0):(nP0+nP1)] else numeric(0)
+            nP1_selected <- sum(beta1_selected != 0)
+            beta2_selected <- if(nP2 != 0) tempfit$estimate[(1+nP0+nP1):(nP0+nP1+nP2)] else numeric(0)
+            nP2_selected <- sum(beta2_selected != 0)
+            beta3_selected <- if(nP3 != 0) tempfit$estimate[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)] else numeric(0)
+            nP3_selected <- sum(beta3_selected != 0)
+
+            nPtot_selected <- nP0 + nP1_selected + nP2_selected + nP3_selected
+
+            tempaic <- 2*final_nll + 2* nPtot_selected
+            tempbic <- 2*final_nll + log(n) * nPtot_selected
+            tempgcv <- final_nll/(n^2*(1-nPtot_selected/n)^2)
+
+            # The provisional idea for degrees of freedom is to take the number of unique nonzero estimates, e.g.,
+            # nPtot_selected_unique <- sum(unique(finalVals_selected) != 0)
+            #but here we use a tolerance because we can't get exact equality
+            #NOTE THIS DOES NOT INCORPORATE POTENTIAL EQUALITY OF BASELINE PARAMETERS
+            #ALSO IT ASSUMES THE SAME COVARIATES IN THE SAME ORDER ACROSS ALL THREE HAZARDSSSS!!!
+            if(nP1==nP2 & nP2==nP3){
+              nPtot_unique <- nP0 + sum(beta1_selected != 0 &
+                                          abs(beta1_selected - beta2_selected) > fusion_tol &
+                                          abs(beta1_selected - beta3_selected) > fusion_tol) +
+                sum(beta2_selected != 0 &
+                      abs(beta2_selected - beta3_selected) > fusion_tol) +
+                sum(beta3_selected != 0)
+
+              #currently, these account for fusion in the 'degrees of freedom' by counting unique parameters
+              tempaic_unique <- 2*final_nll + 2* nPtot_unique
+              tempbic_unique <- 2*final_nll + log(n) * nPtot_unique
+              tempgcv_unique <- final_nll/(n^2*(1-nPtot_unique/n)^2)
+            } else{
+              nPtot_unique <- tempaic_unique <- tempbic_unique <- tempgcv_unique <- NA
+            }
+
+            #alternative definition of degrees of freedom from Sennhenn-Reulen & Kneib via Gray (1993)
+            # browser()
+            if(!is.null(tempfit$final_nhess)){
+              final_nhess_nopen <- nhess_func(para=tempfit$estimate, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                              Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                              hazard=hazard, frailty=frailty, model=model)
+              final_cov <- tryCatch(solve(tempfit$final_nhess),
+                                    error=function(cnd){
+                                      message(cnd)
+                                      cat("\n")
+                                      return(NULL)
+                                    })
+              if(!is.null(final_cov)){
+                df_est <- sum(diag( final_nhess_nopen %*% final_cov ))
+              } else{
+                df_est <- NA
+              }
+
+              tempaic_estdf <- 2*final_nll + 2* df_est
+              tempbic_estdf <- 2*final_nll + log(n) * df_est
+              tempgcv_estdf <- final_nll/(n^2*(1-df_est/n)^2)
+
+            } else{
+              df_est <- tempaic_estdf <- tempbic_estdf <- tempgcv_estdf <- NA
+            }
+
+            out_info[iter,] <- c(lambda,lambda_fusedcoef, mu_smooth_fused, ball_R)
+            out_ests[iter,] <- tempfit$estimate
+            out_pen_ngrads[iter,] <- as.vector(tempfit$final_ngrad_pen)
+            out_ics[iter,] <- c(tempfit$final_nll, tempfit$final_nll_pen,
+                                nPtot, nPtot_selected, nPtot_unique, df_est,
+                                tempaic, tempaic_unique,tempaic_estdf,
+                                tempbic_unique,tempbic,tempbic_estdf,
+                                tempgcv, tempgcv_unique,tempgcv_estdf)
+            out_control[iter,] <- c(tempfit$niter,tempfit$fit_code,tempfit$final_step_size,extra_start_iter)
+            out_starts[iter,] <- startVals_inner_temp
+            nll_pen_trace_mat[iter, ] <- tempfit$nll_pen_trace
+
+            #if this is the first time through this middle/inner combo,
+            #then the results are relevant for the next iteration of the outer loop
+            if(warm_start & lambda_fusedcoef_iter==1 & mu_smooth_iter==1){
+              startVals_outer <- tempfit$estimate
+              if(fit_method %in% c("prox")){
+                step_size_init_outer <- tempfit$final_step_size
+              }
+            }
+
+            #if this is the first time through this inner loop,
+            #then the results are relevant for the next iteration of the middle loop
+            if(warm_start & mu_smooth_iter==1){
+              if(fit_method %in% c("prox")){
+                step_size_init_middle <- tempfit$final_step_size
+              }
+            }
+
+            #Here, let's track the best final estimates, which we will ultimately pass along
+            #as the start values for the next INNER LOOP
+            startVals_inner <- tempfit$estimate
+
+            # Wang (2014) suggest in their pathwise approach to carry over the step size from each iteration
+            # So we do that here but only for the proximal algorithm. The accelerated method re-estimates its step size
+            # at each step anyways so the initial step being too big is less of an issue.
+            if(fit_method %in%  c("prox")){
+              step_size_init_inner <- tempfit$final_step_size
+            }
+
           }
         }
-
-        #if this is the first time through this inner loop,
-        #then the results are relevant for the next iteration of the middle loop
-        if(warm_start & mu_smooth_iter==1){
-          if(fit_method %in% c("prox")){
-            step_size_init_middle <- tempfit$final_step_size
-          }
-        }
-
 
         iter <- iter + 1
         #if there is no smoothing, then break out of the inner smoothing loop
@@ -311,10 +328,11 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
       }
 
-      #now that we've reached the end of the inner loop, let's use those starting values for the next middle loop step
-      #we have already above determined the correct starting step size for the next iteration of the middle loop
+      #now that we've reached the end of the inner loop, let's use the final best values
+      #over all of the random starts as starting values for the next middle loop step
+        #note we have already above determined the correct starting step size for the next iteration of the middle loop
       if(warm_start){
-        startVals_middle <- tempfit$estimate
+        startVals_middle <- startVals_inner
       }
 
     }
@@ -332,31 +350,6 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
   rownames(out_starts) <- NULL
   rownames(out_control) <- NULL
   rownames(nll_pen_trace_mat) <- NULL
-  # colnames(out_control) <- c("niter","fitcode","final_step_size")
-  # out_ests <- as.data.frame(cbind(out_info,out_ests))
-  # out_ics <- as.data.frame(cbind(out_info,out_ics))
-  # out_control <- as.data.frame(cbind(out_info,out_control))
-  # out_pen_ngrads <- as.data.frame(cbind(out_info,out_pen_ngrads))
-  # out_starts <- as.data.frame(cbind(out_info,out_starts))
-  # bic_best_index <- which(out_ics$BIC == min(out_ics$BIC))
-  # print(out_ests)
-  # if(ncol(lambda_path) == 1){ #as long as all the fused lasso lambdas are the same, make the plots
-  #   # colnames(out_ests) <- c("lambda",names(tempfit$estimate))
-  #   plot_out_ests <- reshape2::melt(out_ests, id="lambda1") %>%
-  #     dplyr::mutate(vartype=ifelse(stringr::str_detect(variable,"_1"),"Beta1",
-  #                                  ifelse(stringr::str_detect(variable,"_2"),"Beta2",
-  #                                         ifelse(stringr::str_detect(variable,"_3"),"Beta3",
-  #                                                "Weibull Params"))))
-  #
-  #
-  #   plot_out <- ggplot2::qplot(lambda1, value, group=variable, geom="line", data=plot_out_ests) +
-  #     ggplot2::facet_wrap(~ vartype,scales="free_y") +
-  #     # geom_vline(xintercept=lambda[bic_best_index,]) +
-  #     ggplot2::theme_classic() +
-  #     ggplot2::theme(legend.position="none") +
-  #     ggplot2::ggtitle(paste("Regularization Path for",penalty))
-  #   # print(plot_out)
-  # }
 
   return(list(out_info=out_info,
               out_ests=out_ests,
@@ -375,6 +368,5 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
               penalty_fusedbaseline=penalty_fusedbaseline,
               lambda_fusedbaseline=lambda_fusedbaseline,
               fit_method=fit_method))
-
 
 }
