@@ -203,7 +203,8 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                         dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
                                         penalty=penalty,lambda=lambda, a=a,
                                         penweights_list=penweights_list,
-                                        pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
+                                        pen_mat_w_lambda = pen_mat_w_lambda,
+                                        mu_smooth_fused = mu_smooth_fused)/n
 
     #Barzilai-Borwein step size estimation
     if(i>1){
@@ -233,7 +234,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
     if(is.nan(nll_pen_znext)){
       if(verbose)print("whoops, proposed z step yielded infinite likelihood value, just fyi")
-      nll_pen_znext=Inf
+      nll_pen_znext <- Inf
     }
 
 

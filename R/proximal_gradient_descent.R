@@ -302,15 +302,15 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
 
     # trace_mat <- cbind(trace_mat,xnext)
 
-    #RECORD RESULT WITHOUT SMOOTHING, TO PUT US ON A COMMON SCALE!
-    nll_pen_xnext <- nll_pen_trace[i] <- nll_pen_func(para=xnext,
-                                                      y1=y1, y2=y2, delta1=delta1, delta2=delta2,
-                                                      Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
-                                                      basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
-                                                      dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
-                                                      hazard=hazard, frailty=frailty, model=model,
-                                                      penalty=penalty,lambda=lambda, a=a, penweights_list=penweights_list,
-                                                      pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = 0)/n
+    #RECORD TRACE RESULT WITHOUT SMOOTHING, TO PUT US ON A COMMON SCALE!
+    nll_pen_trace[i] <- nll_pen_func(para=xnext,
+                                    y1=y1, y2=y2, delta1=delta1, delta2=delta2,
+                                    Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+                                    basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
+                                    dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3,
+                                    hazard=hazard, frailty=frailty, model=model,
+                                    penalty=penalty,lambda=lambda, a=a, penweights_list=penweights_list,
+                                    pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = 0)/n
 
     ##Check for convergence##
     ##*********************##
@@ -335,30 +335,33 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                  lambda_f_vec=lambda_f_vec,
                                  mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
 
-    max_change <- max(abs(xcurr-xprev))
-    norm_change <- sqrt(sum((xcurr-xprev)^2))
-    nll_pen_change <- nll_pen_xnext-nll_pen_xcurr
+    max_est_change <- max(abs(xcurr-xprev))
+    norm_est_change <- sqrt(sum((xcurr-xprev)^2))
+    nll_pen_change <- nll_pen_xnext-nll_pen_xcurr #these are both SMOOTHED, so they are direct comparison
 
     if(verbose){
-      print(paste("max change in ests",max_change))
+      print(paste("max change in ests",max_est_change))
       print(paste("suboptimality (max norm of prox grad)", subopt_t))
-      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_change]))
-      print(paste("max norm of change", norm_change)) #essentially a change in estimates norm
+      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_est_change]))
+      print(paste("max norm of change", norm_est_change)) #essentially a change in estimates norm
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
     }
 
     if("suboptimality" %in% conv_crit){
-      if(subopt_t <= conv_tol){break} #conv_tol is called 'epsilon' in the Wang (2014) paper
+      if(subopt_t <= conv_tol){
+        fit_code <- 2
+        break
+      } #conv_tol is called 'epsilon' in the Wang (2014) paper
     }
     if("est_change_norm" %in% conv_crit){
-      if(norm_change < conv_tol){
+      if(norm_est_change < conv_tol){
         fit_code <- 2
         break
       }
     }
     if("max_est_change" %in% conv_crit){
-      if(max_change < conv_tol){
+      if(max_est_change < conv_tol){
         fit_code <- 2
         break
       }
@@ -398,7 +401,8 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                         dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3)
   final_pen <- pen_func(para=finalVals,nP1=nP1,nP2=nP2,nP3=nP3,
                         penalty=penalty,lambda=lambda, a=a,penweights_list=penweights_list,
-                        pen_mat_w_lambda = pen_mat_w_lambda) #Here, we're reporting the final results under the un-smoothed fused lasso
+                        pen_mat_w_lambda = pen_mat_w_lambda)
+  #Note we're also reporting the final results under the un-smoothed fused lasso
 
   final_nll_pen <- final_nll + (n*final_pen)
 
@@ -440,6 +444,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                            conv_crit=conv_crit,
                            conv_tol=conv_tol,
                            maxit=maxit),
+              conv_stats=c(max_est_change=max_est_change,norm_est_change=norm_est_change,nll_pen_change=nll_pen_change,subopt=subopt_t),
               ball_R=ball_R,
               final_step_size=step_size_ti,
               bad_step_count=bad_step_count))
