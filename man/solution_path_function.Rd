@@ -35,6 +35,7 @@ solution_path_function(
   ball_R = Inf,
   fit_method,
   warm_start = TRUE,
+  extra_starts = 0,
   select_tol = 1e-04,
   fusion_tol = 0.001,
   step_size_min = 1e-06,
@@ -147,6 +148,9 @@ Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an
 
 \item{warm_start}{Boolean indicating whether each step of the solution should start from
 ending of previous (\code{TRUE}) or from the original starting point (\code{FALSE}).}
+
+\item{extra_starts}{numeric indicating how many additional optimization runs from random start values
+should be performed at each grid point.}
 
 \item{select_tol}{Positive numeric value for thresholding estimates to be equal to zero.}
 
