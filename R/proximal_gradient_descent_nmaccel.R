@@ -250,8 +250,17 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
     #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
     step_thresh1 <- nll_pen_ycurr - step_delta*sum((znext-ycurr)^2)
+    if(is.nan(step_thresh1)){
+      if(verbose)print("whoops, proposed z step threshold 1 is infinite, just fyi")
+      step_thresh1 <- -Inf
+    }
+
     #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
     step_thresh2 <- ccurr - step_delta*sum((znext-ycurr)^2)
+    if(is.nan(step_thresh2)){
+      if(verbose)print("whoops, proposed z step threshold 2 is infinite, just fyi")
+      step_thresh2 <- -Inf
+    }
 
     while(nll_pen_znext > step_thresh1 & nll_pen_znext > step_thresh2){
       if(abs(step_size_y) < step_size_min){
@@ -285,8 +294,17 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh1 <- nll_pen_ycurr - step_delta*mean((znext-ycurr)^2)
+      if(is.nan(step_thresh1)){
+        if(verbose)print("whoops, proposed z step threshold 1 is infinite, just fyi")
+        step_thresh1 <- -Inf
+      }
+
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh2 <- ccurr - step_delta*mean((znext-ycurr)^2)
+      if(is.nan(step_thresh2)){
+        if(verbose)print("whoops, proposed z step threshold 2 is infinite, just fyi")
+        step_thresh2 <- -Inf
+      }
 
       if(verbose)print(paste0("y step size reduced to: ",step_size_y))
 
@@ -330,6 +348,10 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh3 <- ccurr - step_delta*mean((vnext-xcurr)^2)
+      if(is.nan(step_thresh3)){
+        if(verbose)print("whoops, proposed v step threshold 3 is infinite, just fyi")
+        step_thresh3 <- -Inf
+      }
 
       if(is.nan(nll_pen_vnext)){
         if(verbose)print("whoops, proposed v step yielded infinite likelihood value, just fyi")
@@ -342,8 +364,6 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
           bad_step_count <- bad_step_count + 1
           break
         }
-
-
 
         step_size_x <- step_size_scale * step_size_x
 
@@ -371,7 +391,13 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
         #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
         step_thresh3 <- ccurr - step_delta*sum((vnext-xcurr)^2)
+        if(is.nan(step_thresh3)){
+          if(verbose)print("whoops, proposed v step threshold 3 is infinite, just fyi")
+          step_thresh3 <- -Inf
+        }
+
         if(verbose)print(paste0("x step size reduced to: ",step_size_x))
+
       }
 
       if(nll_pen_znext < nll_pen_vnext){
