@@ -176,7 +176,9 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                  penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                                  penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                                                  penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
-                                                 step_size_init=step_size_init_inner,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
+                                                 step_size_init=step_size_init_inner_temp,
+                                                 step_size_min=step_size_min,step_size_max=step_size_max,
+                                                 step_size_scale=step_size_scale,
                                                  maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                  ball_R=Inf, verbose=verbose)
           }
@@ -190,8 +192,10 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                          penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                                          penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                                                          penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
-                                                         step_size_init_x=step_size_init_inner,step_size_init_y=step_size_init_inner,
-                                                         step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
+                                                         step_size_init_x=step_size_init_inner_temp,
+                                                         step_size_init_y=step_size_init_inner_temp,
+                                                         step_size_min=step_size_min,step_size_max=step_size_max,
+                                                         step_size_scale=step_size_scale,
                                                          maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                          ball_R=Inf, verbose=verbose)
           }
