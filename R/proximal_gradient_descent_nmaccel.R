@@ -29,22 +29,6 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                               verbose){
 
   #THIS IS THE ALGORITHM OF LI & LIN (2015), WHICH IS NOT REALLY DESIGNED FOR A SOLUTION PATH BUT FOR FINDING A SPECIFIC SOLUTION.
-  #para is vector of starting values
-  #y1-2 are first and second event times
-  #delta1-2 are indicators of observation of first and second events
-  #Xmat1-3 are design matrices corresponding to each transition (should be 'matrix' objects)
-  #hazard is string saying form of hazard. "weibull"
-  #frailty is boolean for whether to include a gamma frailty or not, currently everything is designed assuming a frailty
-  #model is string saying "markov" or "semi-markov"
-  #penalty is string for what form of coordinatewise penalty there should be
-  #lambda is either a scalar value for the penalty parameter shared by all three transitions,
-  #or a three-vector with the values for each of the three transitions
-  #a is a scalar value for the second penalty parameter in SCAD, MCP, and adaptive lasso
-  #Default is 3.7 for SCAD, 3 for MCP, and 1 for adaptive lasso
-  #verbose is a boolean indicating whether to print the running fitting details
-  #control is a list with options, outlined below
-  #parahat is a vector of weights for adaptive lasso, typically arising as the MLE fit of the full model
-
 
   #START HERE AND UPDATE THE REST OF THE FUNCTION WITH THE NEW SYNTAX
 
@@ -180,7 +164,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
   i <- 1
   while(i <= maxit){
-    if(verbose)print(i)
+    if(verbose >= 2)print(i)
     # if(i==15){browser()}
     ##RUN ACTUAL STEP##
     ##***************##
@@ -227,7 +211,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                   pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
 
     if(is.nan(nll_pen_znext)){
-      if(verbose)print("whoops, proposed z step yielded infinite likelihood value, just fyi")
+      if(verbose >= 4)print("whoops, proposed z step yielded infinite likelihood value, just fyi")
       nll_pen_znext <- Inf
     }
 
@@ -245,20 +229,20 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
     #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
     step_thresh1 <- nll_pen_ycurr - step_delta*sum((znext-ycurr)^2)
     if(is.nan(step_thresh1)){
-      if(verbose)print("whoops, proposed z step threshold 1 is infinite, just fyi")
+      if(verbose >= 4)print("whoops, proposed z step threshold 1 is infinite, just fyi")
       step_thresh1 <- -Inf
     }
 
     #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
     step_thresh2 <- ccurr - step_delta*sum((znext-ycurr)^2)
     if(is.nan(step_thresh2)){
-      if(verbose)print("whoops, proposed z step threshold 2 is infinite, just fyi")
+      if(verbose >= 4)print("whoops, proposed z step threshold 2 is infinite, just fyi")
       step_thresh2 <- -Inf
     }
 
     while(nll_pen_znext > step_thresh1 & nll_pen_znext > step_thresh2){
       if(abs(step_size_y) < step_size_min){
-        if(verbose)print("y step size got too small, accepting result anyways")
+        if(verbose >= 4)print("y step size got too small, accepting result anyways")
         bad_step_count <- bad_step_count + 1
         break
       }
@@ -282,25 +266,25 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                     pen_mat_w_lambda = pen_mat_w_lambda,mu_smooth_fused = mu_smooth_fused)/n
 
       if(is.nan(nll_pen_znext)){
-        if(verbose)print("whoops, proposed z step yielded infinite likelihood value, just fyi")
+        if(verbose >= 4)print("whoops, proposed z step yielded infinite likelihood value, just fyi")
         nll_pen_znext <- Inf
       }
 
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh1 <- nll_pen_ycurr - step_delta*mean((znext-ycurr)^2)
       if(is.nan(step_thresh1)){
-        if(verbose)print("whoops, proposed z step threshold 1 is infinite, just fyi")
+        if(verbose >= 4)print("whoops, proposed z step threshold 1 is infinite, just fyi")
         step_thresh1 <- -Inf
       }
 
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh2 <- ccurr - step_delta*mean((znext-ycurr)^2)
       if(is.nan(step_thresh2)){
-        if(verbose)print("whoops, proposed z step threshold 2 is infinite, just fyi")
+        if(verbose >= 4)print("whoops, proposed z step threshold 2 is infinite, just fyi")
         step_thresh2 <- -Inf
       }
 
-      if(verbose)print(paste0("y step size reduced to: ",step_size_y))
+      if(verbose >= 4)print(paste0("y step size reduced to: ",step_size_y))
 
     }
 
@@ -343,18 +327,18 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
       #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
       step_thresh3 <- ccurr - step_delta*mean((vnext-xcurr)^2)
       if(is.nan(step_thresh3)){
-        if(verbose)print("whoops, proposed v step threshold 3 is infinite, just fyi")
+        if(verbose >= 4)print("whoops, proposed v step threshold 3 is infinite, just fyi")
         step_thresh3 <- -Inf
       }
 
       if(is.nan(nll_pen_vnext)){
-        if(verbose)print("whoops, proposed v step yielded infinite likelihood value, just fyi")
+        if(verbose >= 4)print("whoops, proposed v step yielded infinite likelihood value, just fyi")
         nll_pen_vnext=Inf
       }
 
       while(nll_pen_vnext >= step_thresh3){
         if(abs(step_size_x) < step_size_min){
-          if(verbose)print("x step size got too small, accepting result anyways")
+          if(verbose >= 4)print("x step size got too small, accepting result anyways")
           bad_step_count <- bad_step_count + 1
           break
         }
@@ -378,7 +362,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                       pen_mat_w_lambda = pen_mat_w_lambda, mu_smooth_fused = mu_smooth_fused)/n
 
         if(is.nan(nll_pen_vnext)){
-          if(verbose)print("whoops, proposed v step yielded infinite likelihood value, just fyi")
+          if(verbose >= 4)print("whoops, proposed v step yielded infinite likelihood value, just fyi")
           nll_pen_vnext=Inf
         }
 
@@ -386,11 +370,11 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
         #threshold for 'sufficient descent' (though I should monitor for whether this needs to be scaled by n)
         step_thresh3 <- ccurr - step_delta*sum((vnext-xcurr)^2)
         if(is.nan(step_thresh3)){
-          if(verbose)print("whoops, proposed v step threshold 3 is infinite, just fyi")
+          if(verbose >= 4)print("whoops, proposed v step threshold 3 is infinite, just fyi")
           step_thresh3 <- -Inf
         }
 
-        if(verbose)print(paste0("x step size reduced to: ",step_size_x))
+        if(verbose >= 4)print(paste0("x step size reduced to: ",step_size_x))
 
       }
 
@@ -446,9 +430,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
     est_change_2norm <- sqrt(sum((xcurr-xprev)^2))
     nll_pen_change <- nll_pen_xnext-nll_pen_xcurr
 
-
-
-    if(verbose){
+    if(verbose >= 3){
       print(paste("max change in ests",est_change_max))
       print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == est_change_max]))
       # print(paste("suboptimality (max norm of prox grad)", subopt_t))
@@ -456,10 +438,6 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
     }
-
-
-
-
 
     if("suboptimality" %in% conv_crit){
       #convergence criterion given in Wang (2014)

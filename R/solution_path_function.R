@@ -134,7 +134,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
       startVals_inner <- startVals_middle
       step_size_init_inner <- step_size_init_middle
 
-      if(verbose){
+      if(verbose >= 1){
         print(paste0("step: ",lambda_iter,
                      " lambda: ",lambda,
                      " lambda_fusedcoef: ",lambda_fusedcoef))#, " mu_smooth_fused: ",mu_smooth_fused, " extra_start: ", extra_start_iter))
@@ -214,7 +214,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
           #If this random start has reached a better value than the previous start, then update all of the resulting outputs
           if(tempfit$final_nll_pen < best_nll_pen){
-            if(verbose){print(paste0("new best value found from start: ",extra_start_iter))}
+            if(verbose >= 1){print(paste0("start ",extra_start_iter, "yielded better obj value ", tempfit$final_nll_pen," over ",best_nll_pen))}
             best_nll_pen <- tempfit$final_nll_pen
 
             ##Now, let's COMPUTE SOME USEFUL FIT STATISTICS based on this fit##

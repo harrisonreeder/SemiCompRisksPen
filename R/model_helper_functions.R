@@ -134,24 +134,24 @@ get_start <- function(y1,y2,delta1,delta2,
 
   #For all methods, start by fitting three univariate models. If this were too big, consider a ridge approach
   if(p1 == 0 | sparse_start){
-    fit_survreg_1 <- survival::survreg(Surv(y1,delta1) ~ 1,
+    fit_survreg_1 <- survival::survreg(survival::Surv(y1,delta1) ~ 1,
                                        dist="weibull")
   } else{
-    fit_survreg_1 <- survival::survreg(Surv(y1,delta1) ~ Xmat1,
+    fit_survreg_1 <- survival::survreg(survival::Surv(y1,delta1) ~ Xmat1,
                                        dist="weibull")
   }
   if(p2 == 0 | sparse_start){
-    fit_survreg_2 <- survival::survreg(Surv(y2,delta2) ~ 1,
+    fit_survreg_2 <- survival::survreg(survival::Surv(y2,delta2) ~ 1,
                                        dist="weibull")
   } else{
-    fit_survreg_2 <- survival::survreg(Surv(y2,delta2) ~ Xmat2,
+    fit_survreg_2 <- survival::survreg(survival::Surv(y2,delta2) ~ Xmat2,
                                        dist="weibull")
   }
   if(p3 == 0 | sparse_start){
-    fit_survreg_3 <- survival::survreg(Surv(y2,delta2) ~ 1,
+    fit_survreg_3 <- survival::survreg(survival::Surv(y2,delta2) ~ 1,
                                        dist="weibull")
   } else{
-    fit_survreg_3 <- survival::survreg(Surv(y2,delta2) ~ Xmat3,
+    fit_survreg_3 <- survival::survreg(survival::Surv(y2,delta2) ~ Xmat3,
                                        dist="weibull")
   }
 

@@ -50,7 +50,8 @@
 #' @param maxit Positive integer maximum number of iterations.
 #' @param conv_crit String (possibly vector) giving the convergence criterion.
 #' @param conv_tol Positive numeric value giving the convergence tolerance for the chosen criterion.
-#' @param verbose Boolean indicating whether information about each iteration should be printed.
+#' @param verbose Numeric indicating the amount of iteration information should be printed to the user.
+#'   Higher numbers provide more detailed information to user, but will slow down the algorithm.
 #'
 #' @return A list.
 #' @export
@@ -73,21 +74,6 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
 
   #THIS IS STANDARD PROXIMAL GRADIENT DESCENT WITH A LINE SEARCH
   #THE BUILDING BLOCK OF THE PISTA ALGORITHM OF WANG ET AL. (2014) THAT I'M USING FOR A START
-  #para is vector of starting values
-  #y1-2 are first and second event times
-  #delta1-2 are indicators of observation of first and second events
-  #Xmat1-3 are design matrices corresponding to each transition (should be 'matrix' objects)
-  #hazard is string saying form of hazard. "weibull"
-  #frailty is boolean for whether to include a gamma frailty or not, currently everything is designed assuming a frailty
-  #model is string saying "markov" or "semi-markov"
-  #penalty is string for what form of coordinatewise penalty there should be
-  #lambda is either a scalar value for the penalty parameter shared by all three transitions,
-  #or a three-vector with the values for each of the three transitions
-  #a is a scalar value for the second penalty parameter in SCAD, MCP, and adaptive lasso
-  #Default is 3.7 for SCAD, 3 for MCP, and 1 for adaptive lasso
-  #verbose is a boolean indicating whether to print the running fitting details
-  #control is a list with options, outlined below
-  #parahat is a vector of weights for adaptive lasso, typically arising as the MLE fit of the full model
 
 
 
@@ -207,7 +193,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
 
   i <- 1 #this is instead of 'k' in Wang (2014)
   while(i <= maxit){
-    if(verbose)print(i)
+    if(verbose >= 2)print(i)
     # if(i==15){browser()}
     ##RUN ACTUAL STEP##
     ##***************##
@@ -248,19 +234,19 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                                         step_size=step_size_ti)/n
 
     if(is.nan(nll_pen_xnext)){
-      if(verbose)print("whoops, proposed step yielded infinite likelihood value, just fyi")
+      if(verbose >= 4)print("whoops, proposed step yielded infinite likelihood value, just fyi")
       nll_pen_xnext <- smooth_obj_lqa_pen_xnext <- Inf
     }
 
     while(is.infinite(nll_pen_xnext) || nll_pen_xnext > smooth_obj_lqa_pen_xnext){
       if(step_size_ti < step_size_min){
-        if(verbose)print("step size got too small, accepting result anyways")
+        if(verbose >= 4)print("step size got too small, accepting result anyways")
         bad_step_count <- bad_step_count + 1
         break
       }
       step_size_ti <- step_size_ti * step_size_scale
-      if(verbose)print(paste0("nll_pen_xnext:",nll_pen_xnext," bigger than smooth_obj_lqa_pen_xnext:",smooth_obj_lqa_pen_xnext))
-      if(verbose)print(paste0("effective step size reduced to: ",step_size_ti))
+      if(verbose >= 4)print(paste0("nll_pen_xnext:",nll_pen_xnext," bigger than smooth_obj_lqa_pen_xnext:",smooth_obj_lqa_pen_xnext))
+      if(verbose >= 4)print(paste0("effective step size reduced to: ",step_size_ti))
 
       xnext <- prox_func(para=xcurr-ngrad_xcurr*step_size_ti, prev_para = xcurr,
                          nP1=nP1,nP2=nP2,nP3=nP3,step_size=step_size_ti,
@@ -291,7 +277,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                                           mu_smooth_fused = mu_smooth_fused,step_size=step_size_ti)/n
 
       if(is.nan(nll_pen_xnext)){
-        if(verbose)print("whoops, proposed step yielded infinite likelihood value, just fyi")
+        if(verbose >= 4)print("whoops, proposed step yielded infinite likelihood value, just fyi")
         nll_pen_xnext <- smooth_obj_lqa_pen_xnext <- Inf
       }
     }
@@ -341,7 +327,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
     est_change_2norm <- sqrt(sum((xcurr-xprev)^2))
     nll_pen_change <- nll_pen_xnext-nll_pen_xcurr #these are both SMOOTHED, so they are direct comparison
 
-    if(verbose){
+    if(verbose >= 3){
       print(paste("max change in ests",est_change_max))
       print(paste("suboptimality (max norm of prox grad)", subopt_t))
       print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == est_change_max]))
