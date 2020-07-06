@@ -97,13 +97,15 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
   ##Set up control pieces##
   ##*********************##
 
-  #construct control list
   #conv_crit determines criterion used to judge convergence
-  #est_change_norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
-  #max_est_change' looks at largest absolute change in a parameter value
+  #est_change_2norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
+  #est_change_max' looks at largest absolute change in a parameter value
   #nll_pen_change' looks at change in regularized log-likelihood
   #maj_grad_norm' looks at l1 norm of majorized gradient
-  if("maxit" < 0){
+  if(!all(conv_crit %in% c("est_change_2norm","est_change_max","nll_pen_change","suboptimality"))){
+    stop("unknown convergence criterion.")
+  }
+  if(maxit <0){
     stop("maxit must be nonnegative.")
   }
 
@@ -335,15 +337,15 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                  lambda_f_vec=lambda_f_vec,
                                  mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
 
-    max_est_change <- max(abs(xcurr-xprev))
-    norm_est_change <- sqrt(sum((xcurr-xprev)^2))
+    est_change_max <- max(abs(xcurr-xprev))
+    est_change_2norm <- sqrt(sum((xcurr-xprev)^2))
     nll_pen_change <- nll_pen_xnext-nll_pen_xcurr #these are both SMOOTHED, so they are direct comparison
 
     if(verbose){
-      print(paste("max change in ests",max_est_change))
+      print(paste("max change in ests",est_change_max))
       print(paste("suboptimality (max norm of prox grad)", subopt_t))
-      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == max_est_change]))
-      print(paste("max norm of change", norm_est_change)) #essentially a change in estimates norm
+      print(paste("estimate with max change",names(para)[abs(xcurr-xprev) == est_change_max]))
+      print(paste("max norm of change", est_change_2norm)) #essentially a change in estimates norm
       print(paste("change in nll_pen", nll_pen_change))
       print(paste("new nll_pen", nll_pen_xnext))
     }
@@ -354,14 +356,14 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
         break
       } #conv_tol is called 'epsilon' in the Wang (2014) paper
     }
-    if("est_change_norm" %in% conv_crit){
-      if(norm_est_change < conv_tol){
+    if("est_change_2norm" %in% conv_crit){
+      if(est_change_2norm < conv_tol){
         fit_code <- 2
         break
       }
     }
-    if("max_est_change" %in% conv_crit){
-      if(max_est_change < conv_tol){
+    if("est_change_max" %in% conv_crit){
+      if(est_change_max < conv_tol){
         fit_code <- 2
         break
       }
@@ -444,7 +446,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                            conv_crit=conv_crit,
                            conv_tol=conv_tol,
                            maxit=maxit),
-              conv_stats=c(max_est_change=max_est_change,norm_est_change=norm_est_change,nll_pen_change=nll_pen_change,subopt=subopt_t),
+              conv_stats=c(est_change_max=est_change_max,est_change_2norm=est_change_2norm,nll_pen_change=nll_pen_change,subopt=subopt_t),
               ball_R=ball_R,
               final_step_size=step_size_ti,
               bad_step_count=bad_step_count))

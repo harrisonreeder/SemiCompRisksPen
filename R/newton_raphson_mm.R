@@ -49,14 +49,19 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   #min_lr is the minimum learning rate allowed through step-halving process.
   #conv_crit determines criterion used to judge convergence
   #est_change_norm looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
-  #max_est_change looks at largest absolute change in a parameter value
+  #est_change_max looks at largest absolute change in a parameter value
   #ll_maj_change looks at change in majorized log-likelihood (expanded around previous location)
   #ll_reg_change looks at change in regularized log-likelihood
   #maj_grad_norm looks at l1 norm of majorized gradient
   #if (length(noNms <- namc[!namc %in% nmsC])){
   #warning("unknown names in control: ", paste(noNms, collapse=", "))
   #}
-  if(!all(conv_crit %in% c("est_change_norm","max_est_change","nll_maj_change","nll_pen_change","maj_grad_norm"))){
+  #conv_crit determines criterion used to judge convergence
+  #est_change_2norm' looks at l1 norm of change in parameter values (scaled by l1 norm of prior values): sum(abs(finalVals-prevVals))/sum(abs(prevVals))
+  #est_change_max' looks at largest absolute change in a parameter value
+  #nll_pen_change' looks at change in regularized log-likelihood
+  #maj_grad_norm' looks at l1 norm of majorized gradient
+  if(!all(conv_crit %in% c("est_change_2norm","est_change_max","nll_pen_change","nll_maj_change","suboptimality"))){
     stop("unknown convergence criterion.")
   }
   if(maxit < 0){
@@ -328,36 +333,39 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
     ##Check for convergence##
     ##*********************##
 
-    max_change <- max(abs(finalVals-prevVals))
-    scaled_est_change_norm <- sum(abs(finalVals-prevVals))/sum(abs(prevVals))
+    est_change_max <- max(abs(finalVals-prevVals))
+    est_change_2norm <- sqrt(sum((finalVals-prevVals)^2))
+    # scaled_est_change_norm <- sum(abs(finalVals-prevVals))/sum(abs(prevVals))
     nll_maj_change <- next_nll_maj-curr_nll_pen
     nll_pen_change <- next_nll_pen-curr_nll_pen
-    prev_grad_mean_norm <- n^(-1)*sum(abs(temp_ngrad + n*Ek %*% prevVals))
+    # prev_grad_mean_norm <- n^(-1)*sum(abs(temp_ngrad + n*Ek %*% prevVals))
+    subopt_t <- n^(-1)*max(abs(temp_ngrad + n*Ek %*% prevVals))
 
     if(verbose){
-      print(paste("max change in ests",max_change))
-      print(paste("estimate with max change",names(para)[abs(finalVals-prevVals) == max(abs(finalVals-prevVals))]))
-      print(paste("scaled change in l1 norm of ests", scaled_est_change_norm))
-      print(paste("l1 mean norm of last gradient", prev_grad_mean_norm))
+      print(paste("max change in ests",est_change_max))
+      print(paste("estimate with max change",names(para)[abs(finalVals-prevVals) == est_change_max]))
+      print(paste("l2 norm of estimate change",est_change_2norm))
+      # print(paste("scaled change in l1 norm of ests", scaled_est_change_norm))
+      # print(paste("l1 mean norm of last gradient", prev_grad_mean_norm))
       print(paste("change in nll_maj", nll_maj_change))
       print(paste("new nll_maj", next_nll_maj))
       print(paste("new nll_pen", next_nll_pen))
     }
 
-    if("maj_grad_norm" %in% conv_crit){
-      if(prev_grad_mean_norm < conv_tol){
-        fit_code <- 1
-        break
-      }
-    }
-    if("est_change_norm" %in% conv_crit){
-      if(scaled_est_change_norm < conv_tol){
+    if("suboptimality" %in% conv_crit){
+      if(subopt_t < conv_tol){
         fit_code <- 2
         break
       }
     }
-    if("max_est_change" %in% conv_crit){
-      if(max_change < conv_tol){
+    if("est_change_2norm" %in% conv_crit){
+      if(est_change_2norm < conv_tol){
+        fit_code <- 2
+        break
+      }
+    }
+    if("est_change_max" %in% conv_crit){
+      if(est_change_max < conv_tol){
         fit_code <- 2
         break
       }

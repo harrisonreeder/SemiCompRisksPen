@@ -158,8 +158,8 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
             step_size_init_inner_temp <- step_size_init_inner
           } else{
             #Here I'm basing my perturbed start values based off of the 'middle' starting values
-            startVals_inner_temp <- (startVals_middle + rnorm(n = length(startVals_middle),mean = 0,sd=0.7)) *
-              runif(n = length(startVals_middle),min = 0.9, max = 1.1) #adding random multiplicative and additive noise
+            startVals_inner_temp <- (startVals_middle + stats::rnorm(n = length(startVals_middle),mean = 0,sd=0.7)) *
+              stats::runif(n = length(startVals_middle),min = 0.9, max = 1.1) #adding random multiplicative and additive noise
             step_size_init_inner_temp <- step_size_init
           }
 
