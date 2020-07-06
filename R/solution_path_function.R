@@ -6,7 +6,7 @@
 #' This is a function to loop through a path of lambda, lambda_fusedcoef, and mu_smooth values in a somewhat
 #'   thoughtful way to maximize the pathwise connections between starting values and step sizes,
 #'   with some adjustments tailored to each approach to optimization.
-
+#'
 #' @inheritParams proximal_gradient_descent
 #' @inheritParams proximal_gradient_descent_nmaccel
 #' @inheritParams newton_raphson_mm
