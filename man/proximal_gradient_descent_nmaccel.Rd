@@ -155,7 +155,8 @@ Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an
 
 \item{conv_tol}{Positive numeric value giving the convergence tolerance for the chosen criterion.}
 
-\item{verbose}{Boolean indicating whether information about each iteration should be printed.}
+\item{verbose}{Numeric indicating the amount of iteration information should be printed to the user.
+Higher numbers provide more detailed information to user, but will slow down the algorithm.}
 }
 \value{
 A list.

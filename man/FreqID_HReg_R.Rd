@@ -22,7 +22,7 @@ FreqID_HReg_R(
   penalty_fusedbaseline = c("none", "fusedlasso"),
   lambda_fusedbaseline = 0,
   penweights_list = list(),
-  verbose = FALSE,
+  verbose = 0,
   startVals = NULL,
   optimization_method = "prox_grad",
   select_tol = 1e-04,
@@ -93,7 +93,8 @@ for all three transitions, or a length 3 vector with elements corresponding to t
 penalty term (e.g., for adaptive lasso.) Elements of the list should be indexed by the
 names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "fusedbaseline12", "fusedbaseline13", and "fusedbaseline23"}
 
-\item{verbose}{Boolean indicating whether information about each iteration should be printed.}
+\item{verbose}{Numeric indicating the amount of iteration information should be printed to the user.
+Higher numbers provide more detailed information to user, but will slow down the algorithm.}
 
 \item{startVals}{A numeric vector of parameter starting values, arranged as follows:
 the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameters,

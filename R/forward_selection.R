@@ -2,7 +2,7 @@
 #'
 #' This method is meant as a comparator for the penalized estimation procedure.
 #'
-#' @param FreqID_Hreg2
+#' @inheritParams FreqID_HReg2
 #' @param vars character string with all of the possible variable names to be searched through.
 #' @param select_crit a string indicating what criterion should be used to determine whether a covariate should be added.
 #'

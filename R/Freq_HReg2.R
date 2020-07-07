@@ -1,6 +1,6 @@
 #' Fit Parametric Frailty Illness-Death Model for Semi-Competing Risks Data
 #'
-#' @inheritParams Freq_HR_R
+#' @inheritParams FreqID_HReg_R
 #' @param hessian Boolean indicating whether the hessian (aka, the inverse covariance matrix)
 #'   should be computed and returned.
 #' @param control a list of control attributes passed directly into the \code{optim} function.

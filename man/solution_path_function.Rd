@@ -176,7 +176,8 @@ that are close to be considered the same value, for estimating degrees of freedo
 \item{mm_epsilon}{Positive numeric tolerance parameter for smooth approximation
 of absolute value function at 0.}
 
-\item{verbose}{Boolean indicating whether information about each iteration should be printed.}
+\item{verbose}{Numeric indicating the amount of iteration information should be printed to the user.
+Higher numbers provide more detailed information to user, but will slow down the algorithm.}
 }
 \value{
 A list.

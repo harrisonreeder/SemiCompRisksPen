@@ -9,8 +9,6 @@
 #'
 #' @return
 #' @export
-#'
-#' @examples
 get_ic <- function(nll, df, n=NA, ic){
   switch(tolower(ic),
          aic=2*nll + 2 * df,

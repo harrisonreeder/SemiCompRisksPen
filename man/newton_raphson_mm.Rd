@@ -90,7 +90,8 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 \item{mm_epsilon}{Positive numeric tolerance parameter for smooth approximation
 of absolute value function at 0.}
 
-\item{verbose}{Boolean indicating whether information about each iteration should be printed.}
+\item{verbose}{Numeric indicating the amount of iteration information should be printed to the user.
+Higher numbers provide more detailed information to user, but will slow down the algorithm.}
 
 \item{maxit}{Positive integer maximum number of iterations.}
 
