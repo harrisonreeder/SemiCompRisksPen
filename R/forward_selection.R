@@ -55,13 +55,13 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
                                            paste(c(1,used1,currvar),collapse = "+")," |",
                                            paste(c(1,used2),collapse = "+")," |",
                                            paste(c(1,used3),collapse = "+")," "))
-        fit_WB_test_freq <- FreqID_HReg2(Formula = form,
+        fit_temp <- FreqID_HReg2(Formula = form,
                                          data, na.action=na.action, subset=subset,
-                                         hazard=hazard,frailty=frailty,
+                                         hazard=hazard,frailty=frailty, hessian=FALSE,
                                          model=model, knots_list=knots_list)#,na.action = "na.omit")
         #rewrite to allow different criteria. Maybe make a specific function that computes different ones?
-        model_crit_vec[modelcount] <- get_ic(nll = -fit_WB_test_freq$logLike,
-                                             df = sum(fit_WB_test_freq$estimate != 0),
+        model_crit_vec[modelcount] <- get_ic(nll = -fit_temp$logLike,
+                                             df = sum(fit_temp$estimate != 0),
                                              n = n,
                                              ic = select_crit)
         if(model_crit_vec[modelcount] < best_crit_round) {best_crit_round <- model_crit_vec[modelcount]}
@@ -80,13 +80,13 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
                                   paste(c(1,used1),collapse = "+")," |",
                                   paste(c(1,used2,currvar),collapse = "+")," |",
                                   paste(c(1,used3),collapse = "+")," "))
-        fit_WB_test_freq <- FreqID_HReg2(Formula = form,
+        fit_temp <- FreqID_HReg2(Formula = form,
                                          data, na.action=na.action, subset=subset,
-                                         hazard=hazard,frailty=frailty,
+                                         hazard=hazard,frailty=frailty, hessian=FALSE,
                                          model=model, knots_list=knots_list)#,na.action = "na.omit")
         #rewrite to allow different criteria. Maybe make a specific function that computes different ones?
-        model_crit_vec[modelcount] <- get_ic(nll = -fit_WB_test_freq$logLike,
-                                             df = sum(fit_WB_test_freq$estimate != 0),
+        model_crit_vec[modelcount] <- get_ic(nll = -fit_temp$logLike,
+                                             df = sum(fit_temp$estimate != 0),
                                              n = n,
                                              ic = select_crit)
         if(model_crit_vec[modelcount] < best_crit_round) {best_crit_round <- model_crit_vec[modelcount]}
@@ -104,12 +104,12 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
                                   paste(c(1,used1),collapse = "+")," |",
                                   paste(c(1,used2),collapse = "+")," |",
                                   paste(c(1,used3,currvar),collapse = "+")," "))
-        fit_WB_test_freq <- FreqID_HReg2(Formula = form,
+        fit_temp <- FreqID_HReg2(Formula = form,
                                          data, na.action=na.action, subset=subset,
-                                         hazard=hazard,frailty=frailty,
+                                         hazard=hazard,frailty=frailty, hessian=FALSE,
                                          model=model, knots_list=knots_list)#,na.action = "na.omit")
-        model_crit_vec[modelcount] <- get_ic(nll = -fit_WB_test_freq$logLike,
-                                             df = sum(fit_WB_test_freq$estimate != 0),
+        model_crit_vec[modelcount] <- get_ic(nll = -fit_temp$logLike,
+                                             df = sum(fit_temp$estimate != 0),
                                              n = n,
                                              ic = select_crit)
         if(model_crit_vec[modelcount] < best_crit_round) {best_crit_round <- model_crit_vec[modelcount]}
@@ -136,14 +136,24 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
   }
 
   crit_tab <- data.frame(model_crit_vec,used1_vec,used2_vec,used3_vec)
-  best_crit
-  sort(used1)
-  sort(used2)
-  sort(used3)
-  return(list(crit_tab=crit_tab,
+
+  #FIT BEST MODEL
+  form <- Formula::as.Formula(paste0("y1 + delta1 | y2 + delta2 ~",
+                                     paste(c(1,used1),collapse = "+")," |",
+                                     paste(c(1,used2),collapse = "+")," |",
+                                     paste(c(1,used3),collapse = "+")," "))
+  fit_temp <- FreqID_HReg2(Formula = form,
+                            data, na.action=na.action, subset=subset,
+                            hazard=hazard,frailty=frailty,
+                            model=model, knots_list=knots_list)#,na.action = "na.omit")
+
+
+  return(list(final_fit=fit_temp,
+              crit_tab=crit_tab,
               used1=used1,used2=used2,used3=used3,
               best_crit=best_crit,
               used1_list=used1_list,used2_list=used2_list,used3_list=used3_list,
-              model_crit_vec=model_crit_vec))
+              model_crit_vec=model_crit_vec,
+              select_crit=select_crit))
 }
 

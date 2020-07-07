@@ -16,6 +16,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
 
   #wrapper function for fitting a model for a single choice of lambdas, and taking the best of a number of different methods
 
+  #browser()
 
   ##INITIALIZE OPTIONS##
   ##******************##
@@ -26,7 +27,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
     stop("na.action should be either na.fail or na.omit")
   }
 
-  con=list(maxit=500)
+  con=list(maxit=1000)
   nmsC <- names(con)
   namc <- names(control)
   con[namc] <- control
@@ -107,9 +108,9 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                               basis1 = basis1, basis2 = basis2, basis3 = basis3, basis3_y1 = basis3_y1,
                               dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
                               control=con, hessian=hessian,
-                              method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS")$par
+                              method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS")
 
-  if (fit0$code == 0 | fit0$code == 1) {
+  if (fit0$convergence == 0 | fit0$convergence == 1) {
     myLabels <- names(startVals)
     # myLabels <- c("log(kappa1)", "log(alpha1)", "log(kappa2)",
     #               "log(alpha2)", "log(kappa3)", "log(alpha3)")
@@ -124,6 +125,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                   knots_list=knots_list,
                   myLabels = myLabels,
                   frailty = frailty,
+                  optim_details = list(counts=fit0$counts,convergence=fit0$convergence,message=fit0$message),
                   nP = nP)#, Xmat = list(Xmat1, Xmat2, Xmat3))
     value$class <- c("Freq_HReg",
                      "ID",
