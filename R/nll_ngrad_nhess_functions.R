@@ -25,7 +25,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   nP03 <- if(!is.null(basis3)) ncol(basis3) else 0
   n <- length(y1)
 
-  if(tolower(hazard) == "weibull"){
+  if(tolower(hazard) %in% c("weibull","wb")){
     if(frailty){
       nP0 <- 7
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -36,7 +36,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
                                 model = tolower(model))
     } else{stop("non-frailty weibull model not yet implemented")}
   }
-  # else if(tolower(hazard) ==  "bspline"){
+  # else if(tolower(hazard) %in%  c("bspline","bs")){
   #   if(frailty){
   #     nP0 <- nP01 + nP02 + nP03 + 1
   #     stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -54,7 +54,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   #     stop("non-frailty bspline model not yet implemented")
   #   }
   # }
-  else if(tolower(hazard)=="piecewise"){
+  else if(tolower(hazard) %in% c("piecewise","pw")){
     if(frailty){
       nP0 <- nP01 + nP02 + nP03 + 1
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -70,7 +70,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
     } else{
       stop("non-frailty piecewise constant model not yet implemented")
     }
-  } else if(tolower(hazard)=="royston-parmar"){
+  } else if(tolower(hazard) %in% c("royston-parmar","rp")){
     if(frailty){
       nP0 <- nP01 + nP02 + nP03 + 1
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -90,7 +90,7 @@ nll_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
                                     dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3)
       }
     } else {"non-frailty royston-parmar model not yet implemented"}
-  } else{ stop("please choose hazard of 'weibull', 'bspline', or 'piecewise'")}
+  } else{ stop("please choose hazard of 'weibull', 'bspline', 'royston-parmar', or 'piecewise'")}
 
   return(nll)
 }
@@ -124,7 +124,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   nP03 <- if(!is.null(basis3)) ncol(basis3) else 0
   n <- length(y1)
 
-  if(tolower(hazard) == "weibull"){
+  if(tolower(hazard) %in% c("weibull","wb")){
     if(frailty){
       nP0 <- 7
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -141,7 +141,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
       }
     } else{stop("non-frailty not yet implemented")}
   }
-  # else if(tolower(hazard) == "bspline"){
+  # else if(tolower(hazard) %in% c("bspline","bs")){
   #   if(frailty){
   #     nP0 <- nP01 + nP02 + nP03 + 1
   #     stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -157,7 +157,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   #     stop("non-frailty bspline model not yet implemented.")
   #   }
   # }
-  else if(tolower(hazard) == "piecewise"){
+  else if(tolower(hazard) %in% c("piecewise","pw")){
     if(frailty){
       nP0 <- nP01 + nP02 + nP03 + 1
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -173,7 +173,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
     } else{
       stop("non-frailty piecewise model not yet implemented.")
     }
-  } else if(tolower(hazard)=="royston-parmar"){
+  } else if(tolower(hazard) %in% c("royston-parmar","rp")){
     if(frailty){
       nP0 <- nP01 + nP02 + nP03 + 1
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -193,7 +193,7 @@ ngrad_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
                                     dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3)
       }
     } else {"non-frailty royston-parmar model not yet implemented"}
-  } else {stop("please choose hazard of 'weibull', 'bspline', or 'piecewise'")}
+  } else {stop("please choose hazard of 'weibull', 'bspline', 'royston-parmar', or 'piecewise'")}
   return( ngrad )
 }
 
@@ -222,7 +222,7 @@ ngrad_mat_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   nP2 <- if(!is.null(Xmat2)) ncol(Xmat2) else 0
   nP3 <- if(!is.null(Xmat3)) ncol(Xmat3) else 0
 
-  if(tolower(hazard) == "weibull"){
+  if(tolower(hazard) %in% c("weibull","wb")){
     if(frailty){
       nP0 <- 7
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
@@ -265,7 +265,7 @@ nhess_func <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   nP3 <- if(!is.null(Xmat3)) ncol(Xmat3) else 0
   n <- length(y1)
 
-  if(tolower(hazard) == "weibull"){
+  if(tolower(hazard) %in% c("weibull","wb")){
     if(frailty){
       nP0 <- 7
       stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss

@@ -122,7 +122,7 @@ pen_maj_mat_func <- function(para,nP1,nP2,nP3,
 
   #Finally, add penalty of fusion for baseline parameters
   if(tolower(penalty_fusedbaseline) != "none" & !(is.null(hazard))){
-    if(hazard != "weibull"){
+    if(!(tolower(hazard) %in% c("weibull","wb"))){
       stop("non-Weibull not yet implemented")
     }
 

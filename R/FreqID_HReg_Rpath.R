@@ -65,16 +65,16 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
   ##PREPARE KNOTS AND BASIS FUNCTIONS FOR FLEXIBLE MODELS##
   ##*****************************************************##
 
-  if(hazard %in% c("bspline","royston-parmar","piecewise")){
+  if(tolower(hazard) %in% c("bspline", "bs", "royston-parmar", "rp", "piecewise", "pw")){
     if(is.null(knots_list)){
-      p01 <- p02 <- p03 <- if(hazard=="bspline") 5 else 4
+      p01 <- p02 <- p03 <- if(tolower(hazard) %in% c("bspline","bs")) 5 else 4
       knots_list <- get_default_knots_list(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     }
     basis1 <- get_basis(x = y1,knots = knots_list[[1]],hazard = hazard)
     basis2 <- get_basis(x = y1,knots = knots_list[[2]],hazard = hazard)
     dbasis1 <- get_basis(x = y1,knots = knots_list[[1]],hazard = hazard,deriv = TRUE)
     dbasis2 <- get_basis(x = y1,knots = knots_list[[2]],hazard = hazard,deriv = TRUE)
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       basis3 <- get_basis(x = y2-y1,knots = knots_list[[3]],hazard = hazard)
       basis3_y1 <- NULL
       dbasis3 <- get_basis(x = y2-y1,knots = knots_list[[3]],hazard = hazard,deriv = TRUE)

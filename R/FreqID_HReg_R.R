@@ -97,16 +97,16 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
   ##PREPARE KNOTS AND BASIS FUNCTIONS FOR FLEXIBLE MODELS##
   ##*****************************************************##
 
-  if(hazard %in% c("bspline","royston-parmar","piecewise")){
+  if(tolower(hazard) %in% c("bspline","royston-parmar","piecewise","pw","rp","bs")){
     if(is.null(knots_list)){
-      p01 <- p02 <- p03 <- if(hazard=="bspline") 5 else 3
+      p01 <- p02 <- p03 <- if(tolower(hazard) %in% c("bspline","bs")) 5 else 3
       knots_list <- get_default_knots_list(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     }
     basis1 <- get_basis(x = y1,knots = knots_list[[1]],hazard = hazard)
     basis2 <- get_basis(x = y1,knots = knots_list[[2]],hazard = hazard)
     dbasis1 <- get_basis(x = y1,knots = knots_list[[1]],hazard = hazard,deriv = TRUE)
     dbasis2 <- get_basis(x = y1,knots = knots_list[[2]],hazard = hazard,deriv = TRUE)
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       basis3 <- get_basis(x = y2-y1,knots = knots_list[[3]],hazard = hazard)
       basis3_y1 <- NULL
       dbasis3 <- get_basis(x = y2-y1,knots = knots_list[[3]],hazard = hazard,deriv = TRUE)
@@ -165,7 +165,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                          hazard=hazard,frailty=frailty,model=model,
                          basis1 = basis1, basis2 = basis2, basis3 = basis3, basis3_y1 = basis3_y1,
                          dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
-                         control=list(maxit=300),method = if(hazard=="royston-parmar") "BFGS" else "L-BFGS")$par
+                         control=list(maxit=300),method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS")$par
 
   } else{
     parahat_mle <- NULL

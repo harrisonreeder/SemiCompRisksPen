@@ -18,7 +18,7 @@
 #' @export
 get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model){
 
-  if(hazard=="bspline"){
+  if(tolower(hazard) %in% c("bspline","bs")){
 
     quantile_seq1 <- seq(from = 0,to = 1, length.out = p01-2)[-c(1,p01-2)]
     quantile_seq2 <- seq(from = 0,to = 1, length.out = p02-2)[-c(1,p02-2)]
@@ -26,12 +26,12 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 
     knots1 <- c(0,stats::quantile(y1[delta1==1],quantile_seq1),max(y1))
     knots2 <- c(0,stats::quantile(y1[(1-delta1)*delta2==1],quantile_seq2),max(y1))
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       knots3 <- c(0,stats::quantile((y2-y1)[delta1*delta2==1],quantile_seq3),max(y2-y1))
     } else {
       knots3 <- c(0,stats::quantile(y2[delta1*delta2==1],quantile_seq3),max(y2))
     }
-  } else if(hazard=="piecewise"){
+  } else if(tolower(hazard) %in% c("piecewise","pw")){
 
     quantile_seq1 <- seq(from = 0,to = 1, length.out = p01+1)[-c(1,p01+1)]
     quantile_seq2 <- seq(from = 0,to = 1, length.out = p02+1)[-c(1,p02+1)]
@@ -39,13 +39,13 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 
     knots1 <- c(0,stats::quantile(y1[delta1==1],quantile_seq1))
     knots2 <- c(0,stats::quantile(y1[(1-delta1)*delta2==1],quantile_seq2))
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       knots3 <- c(0,stats::quantile((y2-y1)[delta1*delta2==1],quantile_seq3))
     } else {
       knots3 <- c(0,stats::quantile(y2[delta1*delta2==1],quantile_seq3))
     }
 
-  } else if(hazard=="royston-parmar"){
+  } else if(tolower(hazard) %in% c("royston-parmar","rp")){
 
     quantile_seq1 <- seq(from = 0.05,to = 0.95, length.out = p01)[-c(1,p01)]
     quantile_seq2 <- seq(from = 0.05,to = 0.95, length.out = p02)[-c(1,p02)]
@@ -53,7 +53,7 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 
     knots1 <- c(0,stats::quantile(log(y1)[delta1==1],quantile_seq1),max(log(y1)))
     knots2 <- c(0,stats::quantile(log(y1)[(1-delta1)*delta2==1],quantile_seq2),max(log(y1)))
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       knots3 <- c(0,stats::quantile(log(y2-y1)[delta1*delta2==1],quantile_seq3),max(log(y2-y1)))
     } else {
       knots3 <- c(0,stats::quantile(log(y2)[delta1*delta2==1],quantile_seq3),max(y2))
@@ -83,13 +83,13 @@ get_basis <- function(x,knots,hazard,deriv=FALSE){
   #the exact form of the knots passed into this function come from the above function
 
 
-  if(hazard=="bspline"){
+  if(tolower(hazard) %in% c("bspline","bs")){
     if(deriv){return(NULL)}
     basis_out <- splines::bs(x = x,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
-  } else if(hazard=="piecewise"){
+  } else if(tolower(hazard) %in% c("piecewise","pw")){
     if(deriv){return(NULL)}
     basis_out <- pw_cum_mat(y = x,knots = knots)
-  } else if(hazard=="royston-parmar"){
+  } else if(tolower(hazard) %in% c("royston-parmar","rp")){
     temp_log <- log(x)
     temp_log[is.infinite(temp_log)] <- NA
     if(deriv){
@@ -183,7 +183,7 @@ get_start <- function(y1,y2,delta1,delta2,
   }
 
   #for weibull, basically carry over the same stuff from originally.
-  if(hazard=="weibull"){
+  if(tolower(hazard) %in% c("weibull","wb")){
     #assign starting values
     startVals <- c(log(kappa1), #h1 intercept (k1)
                    log(alpha1), #a1
@@ -206,7 +206,7 @@ get_start <- function(y1,y2,delta1,delta2,
   p02<- ncol(basis2)
   p03<- ncol(basis3)
 
-  if(hazard %in% c("bspline","piecewise")){
+  if(tolower(hazard) %in% c("bspline", "bs", "piecewise", "pw")){
     #run the model with no covariates to get possible start values
     startVals <- stats::optim(par = rep(0,p01+p02+p03+1),fn = nll_func, gr = ngrad_func,
                        y1=y1, y2=y2, delta1=delta1, delta2=delta2,
@@ -220,7 +220,7 @@ get_start <- function(y1,y2,delta1,delta2,
     return(startVals)
   }
 
-  if(hazard == "royston-parmar"){
+  if(tolower(hazard) %in% c("royston-parmar","rp")){
     #following discussion in Royston-Parmar (2002), use weibull to fit log(H0) and then regress spline basis
     #generates starting estimates corresponding to weibull baseline hazard
     log_Haz01 <- log(kappa1) + alpha1 * log(y1[delta1==1])
@@ -229,7 +229,7 @@ get_start <- function(y1,y2,delta1,delta2,
     log_Haz02 <- log(kappa2) + alpha2 * log(y1[(1-delta1)*delta2==1])
     phi2 <- stats::lm.fit(x = basis2[(1-delta1)*delta2==1,], y = log_Haz02)$coef
 
-    if(model=="semi-markov"){
+    if(tolower(model)=="semi-markov"){
       log_Haz03 <- log(kappa3) + alpha3 * log((y2-y1)[delta1*delta2==1])
       phi3 <- stats::lm.fit(x = basis3[delta1*delta2==1,], y = log_Haz03)$coef
     } else {
