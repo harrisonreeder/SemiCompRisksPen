@@ -7,7 +7,7 @@
 #' @param n number of observations (denominator of nll)
 #' @param ic string specifying the criterion selected.
 #'
-#' @return
+#' @return a number representing the requested information criterion.
 #' @export
 get_ic <- function(nll, df, n=NA, ic){
   switch(tolower(ic),

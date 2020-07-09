@@ -41,10 +41,13 @@ the knots for the flexible model on the corresponding transition baseline hazard
 
 \item{select_crit}{a string indicating what criterion should be used to determine whether a covariate should be added.}
 
+\item{verbose}{Numeric indicating the amount of iteration information should be printed to the user.
+Higher numbers provide more detailed information to user, but will slow down the algorithm.}
+
 \item{control}{a list of control attributes passed directly into the \code{optim} function.}
 }
 \value{
-
+A list.
 }
 \description{
 This method is meant as a comparator for the penalized estimation procedure.

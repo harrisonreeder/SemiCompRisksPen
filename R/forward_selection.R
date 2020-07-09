@@ -3,10 +3,11 @@
 #' This method is meant as a comparator for the penalized estimation procedure.
 #'
 #' @inheritParams FreqID_HReg2
+#' @inheritParams proximal_gradient_descent
 #' @param vars character string with all of the possible variable names to be searched through.
 #' @param select_crit a string indicating what criterion should be used to determine whether a covariate should be added.
 #'
-#' @return
+#' @return A list.
 #' @export
 forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
                               hazard=c("weibull"),frailty=TRUE, model, knots_list = NULL,
