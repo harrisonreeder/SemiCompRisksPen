@@ -165,7 +165,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                          hazard=hazard,frailty=frailty,model=model,
                          basis1 = basis1, basis2 = basis2, basis3 = basis3, basis3_y1 = basis3_y1,
                          dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
-                         control=list(maxit=300),method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS")$par
+                         control=list(maxit=300),method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS-B")$par
 
   } else{
     parahat_mle <- NULL

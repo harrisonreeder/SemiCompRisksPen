@@ -109,7 +109,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                               dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
                               control=con, hessian=hessian,
                               # method = "BFGS")
-                              method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS")
+                              method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS-B")
 
   if (fit0$convergence == 0 | fit0$convergence == 1) {
     myLabels <- names(startVals)
