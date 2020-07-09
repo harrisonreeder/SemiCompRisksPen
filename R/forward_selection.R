@@ -120,6 +120,12 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
         used1_vec[modelcount] <- paste0(c(used1),collapse=", ")
         used2_vec[modelcount] <- paste0(c(used2),collapse=", ")
         used3_vec[modelcount] <- paste0(c(used3,currvar),collapse=", ")
+
+        if(verbose>= 2){
+          print(paste0("used1: ",used1_vec[modelcount]))
+          print(paste0("used2: ",used2_vec[modelcount]))
+          print(paste0("used3: ",used3_vec[modelcount]))
+        }
         modelcount = modelcount + 1
       }
     }
@@ -134,6 +140,7 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
       continue_flag <- FALSE
     }
     counter <- counter + 1
+
   }
 
   crit_tab <- data.frame(model_crit_vec,used1_vec,used2_vec,used3_vec)
