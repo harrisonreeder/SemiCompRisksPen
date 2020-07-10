@@ -337,7 +337,9 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
 
           #If this new best value is arising during the first time through the fused coef (middle) loop,
-          #then the estimates are relevant for the next iteration of the outer loop
+          #then, e.g., this is most likely the result of an unfused grid point, so
+          #the estimates are relevant for the next iteration of the outer (parameterwise) loop,
+          #which e.g., will also start unfused
           if(warm_start & lambda_fusedcoef_iter==1){
             startVals_outer <- tempfit$estimate
             #again, Wang (2014) suggests tempering the step size along the path but I'm setting that aside for now.
@@ -346,6 +348,14 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
             # }
           }
 
+          #we also want to tell the middle (fused lasso) loop where to start at the next iteration,
+          #so if we've found a new best value for this lambda/fusedlambda pair, then we want to
+          #store it so that the next fused increment also starts from a warm spot for this fused value
+          if(warm_start){
+            startVals_middle <- tempfit$estimate
+          }
+
+          #I THINK THIS IS OLD FROM WHEN THINGS WERE SHIFTED AROUND A BIT
           #Moreover, if this new best value is arising during the first time through the fused coef (middle) loop,
           #then the step size at the end is also possibly relevant for the next iteration of the middle loop
           #though again, we're gonna set that aside for now
@@ -355,6 +365,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
           #   }
           # }
 
+
         } #END OF IF STATEMENT HOUSING UPDATES IF NEW BEST VALUE IS REACHED
 
       } #END OF INNER (EXTRA STARTS) LOOP
@@ -363,12 +374,6 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
     } #END OF MIDDLE (FUSED COEFFICIENT LAMBDA) LOOP
 
-    #now that we've reached the end of the inner loop, let's use the final best values
-    #over all of the random starts as starting values for the next middle loop step
-    #note we have already above determined the correct starting step size for the next iteration of the middle loop
-    if(warm_start){
-      startVals_middle <- startVals_inner
-    }
 
   } #END OF OUTER (PARAMETERWISE LAMBDA) LOOP
 
