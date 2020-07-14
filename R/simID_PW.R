@@ -62,6 +62,11 @@ simID_PW <- function (id = NULL, x1, x2, x3, beta1.true, beta2.true, beta3.true,
 
     knots_list <- as.list(knots_list) #make it so that index can be made rowwise whether there is 1 col or 3
     if(length(knots_list) == 1){
+
+      #consider testing and adding this change eventuallyyyy
+      # if(knots_list[[1]][1] != 0){knots_list[[1]] <- c(0,knots_list[[1]])}
+      # knots03 <- knots02 <- knots01 <- knots_list[[1]]
+
       knots03 <- knots02 <- knots01 <- c(0,knots_list[[1]])
       knots3_diff <- knots2_diff <- knots1_diff <- diff(knots01)
     } else if(length(knots_list) == 3){
