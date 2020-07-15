@@ -1,12 +1,25 @@
 calc_risk_WB <- function(para, X1, X2, X3,
                          t_cutoff, tol=1e-3, frailty=TRUE,
-                         model = "semi-markov"){
+                         type="marginal", gamma=1,
+                         model="semi-markov"){
   #notice reduced default tolerance
   # browser()
   ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
   ##*********************************************************************##
 
-  nP0 <- if(frailty) 7 else 6
+  n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+
+  if(frailty){
+    nP0 <- 7
+    theta <- exp(para[7])
+    if(type=="conditional" & length(gamma)==1){
+      gamma <- rep(gamma,n)
+    }
+  } else{
+    nP0 <- 6
+    type <- "conditional"
+    gamma <- rep(1,n)
+  }
 
   if(!is.null(X1) && !(ncol(X1)==0)){
     nP1 <- ncol(X1)
@@ -33,30 +46,29 @@ calc_risk_WB <- function(para, X1, X2, X3,
     eta3 <- 0
   }
 
-  n <- max(1,nrow(X1),nrow(X2),nrow(X3))
 
   stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
-  alpha1 = exp(para[2])
-  alpha2 = exp(para[4])
-  alpha3 = exp(para[6])
-  kappa1 = exp(para[1])
-  kappa2 = exp(para[3])
-  kappa3 = exp(para[5])
+  alpha1=exp(para[2])
+  alpha2=exp(para[4])
+  alpha3=exp(para[6])
+  kappa1=exp(para[1])
+  kappa2=exp(para[3])
+  kappa3=exp(para[5])
 
   ##NOW, USE THE ESTIMATES TO COMPUTE THE PREDICTIONS##
   ##*************************************************##
 
   #first, compute some helper quantities
   #note this might crap out if there are no covariates in an arm?
-    h1_const = alpha1 * kappa1 * exp(eta1)
-    h2_const = alpha2 * kappa2 * exp(eta2)
-    h3_const = alpha3 * kappa3 * exp(eta3)
-    H1_const = kappa1 * exp(as.vector(eta1))
-    H2_const = kappa2 * exp(as.vector(eta2))
-    H3_const = kappa3 * exp(as.vector(eta3))
-    alpha1_m1 = alpha1 - 1
-    alpha2_m1 = alpha2 - 1
-    alpha3_m1 = alpha3 - 1
+  h1_const=alpha1 * kappa1 * exp(eta1)
+  h2_const=alpha2 * kappa2 * exp(eta2)
+  h3_const=alpha3 * kappa3 * exp(eta3)
+  H1_const=kappa1 * exp(as.vector(eta1))
+  H2_const=kappa2 * exp(as.vector(eta2))
+  H3_const=kappa3 * exp(as.vector(eta3))
+  alpha1_m1=alpha1 - 1
+  alpha2_m1=alpha2 - 1
+  alpha3_m1=alpha3 - 1
 
   ##*****************************************************************##
   ## Calculating posterior predictive density for WB baseline hazard ##
@@ -64,78 +76,111 @@ calc_risk_WB <- function(para, X1, X2, X3,
 
   #First, write functions that compute the integrand, which we feed into integration function
   #the univariate function when T1=infinity
-  f_t2 <- function(t2, index){
-    h2_const[index] * (t2)^alpha2_m1 * exp(-H1_const[index] * (t2)^alpha1 - H2_const[index] * (t2)^alpha2)
+  if(tolower(type) %in% c("marginal","m")){
+    f_t2 <- function(t2, index){
+      h2_const[index] * (t2)^alpha2_m1 *
+        (1 + theta*(H1_const[index] * (t2)^alpha1 +
+                      H2_const[index] * (t2)^alpha2) )^(-theta^(-1) - 1)
+    }
+  } else{
+    f_t2 <- function(t2, index){
+      gamma[index] * h2_const[index] * (t2)^alpha2_m1 *
+        exp(-gamma[index]*(H1_const[index] * (t2)^alpha1 +
+                             H2_const[index] * (t2)^alpha2))
+    }
   }
 
   #next, the different regions of the joint density on the upper triangle
+  # here is the generic formula if we pre-integrate t2 from u to v
+  # \int \lambda_1(t_1)\exp(-\Lambda_1(t_1)-\Lambda_2(t_1)) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
   if(tolower(model) == "semi-markov"){
-    #this is the old code for the original 2-dim integral on the upper triangle. We avoid that now.
-    # f.joint <- function(time.pt.vec){
-    #   ##
-    #   time.pt1 = time.pt.vec[1]
-    #   time.pt2 = time.pt.vec[2]
-    #   if(time.pt1 == 0 | time.pt2 == 0 | (time.pt1 >= time.pt2)){
-    #     return(0)
-    #   }
-    #   return((h1.const * time.pt1^alpha1.m1) * (h3.const * (time.pt2-time.pt1)^alpha3.m1) *
-    #            exp(-H1.const * time.pt1^alpha1 - H2.const * time.pt1^alpha2 - H3.const * (time.pt2 - time.pt1)^alpha3))
-    # }
+
+    #if we pre-integrate t2 from t1 to t_cutoff
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_both <- function(time_pt1,index){
+        return( h1_const[index] * time_pt1^alpha1_m1 * (
+          (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                        H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
+            (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                          H2_const[index] * time_pt1^alpha2 +
+                          H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
+        ) )
+      }
+    } else{
+      f_joint_t1_both <- function(time_pt1,index){
+        return( gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+                    exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
+                  ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff - time_pt1)^alpha3)) )
+      }
+    }
 
     #if we pre-integrate t2 from t_cutoff to infinity
-  # \int \lambda_1(t_1)\exp(-\Lambda_1(t_1)-\Lambda_2(t_1)) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_nonTerm <- function(time_pt1,index){
+        return( h1_const[index] * time_pt1^alpha1_m1 *
+                    (1 + theta * (H1_const[index] * time_pt1^alpha1 +
+                                           H2_const[index] * time_pt1^alpha2 +
+                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
+              )
+      }
+    } else{
+      f_joint_t1_nonTerm <- function(time_pt1,index){
+        return( ( gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+                    exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
+                                           H2_const[index] * time_pt1^alpha2 +
+                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))))
+      }
+    }
 
-    f_joint_t1_nonTerm <- function(time_pt1,index){
-      return( ( h1_const[index] * time_pt1^alpha1_m1 *
-                exp( -H1_const[index] * time_pt1^alpha1 - H2_const[index] * time_pt1^alpha2 ) ) *
-                exp( -H3_const[index] * (t_cutoff - time_pt1)^alpha3))
-    }
-    #if we pre-integrate t2 from t1 to t_cutoff
-    f_joint_t1_both <- function(time_pt1,index){
-      return( ( h1_const[index] * time_pt1^alpha1_m1 *
-                exp( -H1_const[index] * time_pt1^alpha1 - H2_const[index] * time_pt1^alpha2 ) ) *
-                ( 1 - exp( -H3_const[index] * (t_cutoff - time_pt1)^alpha3)) )
-    }
     #if we pre-integrate t2 from t1 to infinity
-    f_joint_t1_neither <- function(time_pt1,index){
-      return( ( h1_const[index] * time_pt1^alpha1_m1 *
-                exp( -H1_const[index] * time_pt1^alpha1 - H2_const[index] * time_pt1^alpha2 ) ) )
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_neither <- function(time_pt1,index){
+        return( h1_const[index] * time_pt1^alpha1_m1 *
+                  (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                                        H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1) )
+      }
+    } else{
+      f_joint_t1_neither <- function(time_pt1,index){
+        return( gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
+                    exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
+                                          H2_const[index] * time_pt1^alpha2) ) )
+      }
     }
 
   } else{
     stop("model must be 'semi-markov'")
   }
 
-  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower = 0, upper = t_cutoff, index=x)$value,
-                                error = function(cnd){
+  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff, index=x)$value,
+                                error=function(cnd){
                                   # message(cnd)
                                   # cat("\n")
                                   return(NA)})
     })
 
-  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower = 0, upper = t_cutoff, index=x)$value,
-                                error = function(cnd){
+  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff, index=x)$value,
+                                error=function(cnd){
                                   # message(cnd)
                                   # cat("\n")
                                   return(NA)})
     })
 
-  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower = t_cutoff, upper = Inf,index=x)$value,
-                                 error = function(cnd){
+  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff, upper=Inf,index=x)$value,
+                                 error=function(cnd){
                                    # message(cnd)
                                    # cat("\n")
                                    return(NA)})
     })
 
-  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower = t_cutoff, upper = Inf,index=x)$value,
-                               error = function(cnd){
+  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff, upper=Inf,index=x)$value,
+                               error=function(cnd){
                                  # message(cnd)
                                  # cat("\n")
                                  return(NA)})
     })
 
-  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower = 0, upper = t_cutoff, index=x)$value,
-                     error = function(cnd){
+  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff, index=x)$value,
+                     error=function(cnd){
                        # message(cnd)
                        # cat("\n")
                        return(NA)})
@@ -144,17 +189,17 @@ calc_risk_WB <- function(para, X1, X2, X3,
   # print(end-begin)
   # print("did both part of joint")
   # return(p_ntonly + p_both)
-  return(cbind(p_ntonly = p_ntonly,
-              p_both = p_both,
-              p_tonly = p_tonly,
-              p_neither = p_neither_t2 + p_neither_joint))
+  return(cbind(p_ntonly=p_ntonly,
+              p_both=p_both,
+              p_tonly=p_tonly,
+              p_neither=p_neither_t2 + p_neither_joint))
 }
 
 
 
 calc_risk_PW <- function(para, X1, X2, X3, knots_list,
                          t_cutoff, tol=1e-3, frailty=TRUE,
-                         model = "semi-markov"){
+                         type="marginal", gamma=1, model="semi-markov"){
   #notice reduced default tolerance
   # browser()
   ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
@@ -168,8 +213,20 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   nP01 <- length(knots_list[[1]])
   nP02 <- length(knots_list[[2]])
   nP03 <- length(knots_list[[3]])
-  nP0 <- if(frailty) nP01 + nP02 + nP03 + 1 else nP01 + nP02 +nP03
 
+  n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+
+  if(frailty){
+    nP0 <- nP01 + nP02 + nP03 + 1
+    theta <- exp(para[nP0])
+    if(type=="conditional" & length(gamma)==1){
+      gamma <- rep(gamma,n)
+    }
+  } else{
+    nP0 <- nP01 + nP02 +nP03
+    type <- "conditional"
+    gamma <- rep(1,n)
+  }
 
   if(!is.null(X1) && !(ncol(X1)==0)){
     nP1 <- ncol(X1)
@@ -209,11 +266,11 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   ##*************************************************##
 
   haz <- function(t,phi,knots){
-    exp(phi)[findInterval(x = t, vec = knots, left.open = TRUE)]
+    exp(phi)[findInterval(x=t, vec=knots, left.open=TRUE)]
   }
 
   Haz <- function(t,phi,knots){
-    rowSums(sweep(x = pw_cum_mat(t,knots),MARGIN = 2,STATS=exp(phi),FUN ="*"))
+    rowSums(sweep(x=pw_cum_mat(t,knots),MARGIN=2,STATS=exp(phi),FUN ="*"))
   }
 
   ##*****************************************************************##
@@ -224,82 +281,111 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   #First, write functions that compute the integrand, which we feed into integration function
 
   #first, the univariate function when T1=infinity
-  f_t2 <- function(t2,index){
-    haz(t=t2,phi=phi2,knots = knots_list[[2]]) * exp(eta2[index]) *
-      exp(-Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) -
-            Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]))
+  if(tolower(type) %in% c("marginal","m")){
+    f_t2 <- function(t2,index){
+      haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
+        (1 + theta * (Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
+                        Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1)
+    }
+  } else{
+    f_t2 <- function(t2,index){
+      gamma[index] * haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
+        exp(-gamma[index]*(Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
+                             Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))
+    }
   }
 
 
   #next, the different regions of the joint density on the upper triangle
   if(tolower(model) == "semi-markov"){
-    #this is the old code for the original 2-dim integral on the upper triangle. We avoid that now.
-    # f.joint <- function(time.pt.vec){
-    #   ##
-    #   time.pt1 = time.pt.vec[1]
-    #   time.pt2 = time.pt.vec[2]
-    #   if(time.pt1 == 0 | time.pt2 == 0 | (time.pt1 >= time.pt2)){
-    #     return(0)
-    #   }
-    #   return((h1.const * time.pt1^alpha1.m1) * (h3.const * (time.pt2-time.pt1)^alpha3.m1) *
-    #            exp(-H1.const * time.pt1^alpha1 - H2.const * time.pt1^alpha2 - H3.const * (time.pt2 - time.pt1)^alpha3))
-    # }
+
+    #if we pre-integrate t2 from t1 to t_cutoff
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_both <- function(time_pt1,index){
+        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
+          (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                        Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
+            (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                          Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1)
+        ))
+      }
+    } else{
+      f_joint_t1_both <- function(time_pt1,index){
+        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
+                  ( 1 - exp(-gamma[index] * Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index]))) )
+      }
+    }
+
 
     #if we pre-integrate t2 from t_cutoff to infinity
-    f_joint_t1_nonTerm <- function(time_pt1,index){
-      return( ( haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-Haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) -
-                        Haz(t=time_pt1,phi=phi2,knots = knots_list[[2]])* exp(eta2[index]) ) ) *
-                exp( -Haz(t=t_cutoff-time_pt1,phi=phi3,knots = knots_list[[3]]) * exp(eta3[index])))
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_nonTerm <- function(time_pt1,index){
+        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                  (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                  Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1))
+      }
+    } else{
+      f_joint_t1_nonTerm <- function(time_pt1,index){
+        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                         Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index]))))
+      }
     }
-    #if we pre-integrate t2 from t1 to t_cutoff
-    f_joint_t1_both <- function(time_pt1,index){
-      return( ( haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-Haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) -
-                        Haz(t=time_pt1,phi=phi2,knots = knots_list[[2]])* exp(eta2[index]) ) ) *
-                ( 1 - exp( -Haz(t=t_cutoff-time_pt1,phi=phi3,knots = knots_list[[3]]) * exp(eta3[index]))) )
-    }
+
     #if we pre-integrate t2 from t1 to infinity
-    f_joint_t1_neither <- function(time_pt1,index){
-      return( ( haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-Haz(t=time_pt1,phi=phi1,knots = knots_list[[1]]) * exp(eta1[index]) -
-                        Haz(t=time_pt1,phi=phi2,knots = knots_list[[2]])* exp(eta2[index]) ) ) )
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_neither <- function(time_pt1,index){
+        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                    (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1) )
+      }
+    } else{
+      f_joint_t1_neither <- function(time_pt1,index){
+        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) ) )
+      }
     }
 
   } else{
     stop("model must be 'semi-markov'")
   }
 
-  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower = 0, upper = t_cutoff, index=x)$value,
-                                              error = function(cnd){
+  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff, index=x)$value,
+                                              error=function(cnd){
                                                 # message(cnd)
                                                 # cat("\n")
                                                 return(NA)})
   })
 
-  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower = 0, upper = t_cutoff, index=x)$value,
-                                             error = function(cnd){
+  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff, index=x)$value,
+                                             error=function(cnd){
                                                # message(cnd)
                                                # cat("\n")
                                                return(NA)})
   })
 
-  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower = t_cutoff, upper = Inf,index=x)$value,
-                                                  error = function(cnd){
+  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff, upper=Inf,index=x)$value,
+                                                  error=function(cnd){
                                                     # message(cnd)
                                                     # cat("\n")
                                                     return(NA)})
   })
 
-  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower = t_cutoff, upper = Inf,index=x)$value,
-                                                      error = function(cnd){
+  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff, upper=Inf,index=x)$value,
+                                                      error=function(cnd){
                                                         # message(cnd)
                                                         # cat("\n")
                                                         return(NA)})
   })
 
-  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower = 0, upper = t_cutoff, index=x)$value,
-                                            error = function(cnd){
+  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff, index=x)$value,
+                                            error=function(cnd){
                                               # message(cnd)
                                               # cat("\n")
                                               return(NA)})
@@ -308,8 +394,8 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   # print(end-begin)
   # print("did both part of joint")
   # return(p_ntonly + p_both)
-  return(cbind(p_ntonly = p_ntonly,
-               p_both = p_both,
-               p_tonly = p_tonly,
-               p_neither = p_neither_t2 + p_neither_joint))
+  return(cbind(p_ntonly=p_ntonly,
+               p_both=p_both,
+               p_tonly=p_tonly,
+               p_neither=p_neither_t2 + p_neither_joint))
 }
