@@ -8,6 +8,7 @@ calc_risk_WB <- function(para, X1, X2, X3,
   ##*********************************************************************##
 
   n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+  t_length <- length(t_cutoff)
 
   if(frailty){
     nP0 <- 7
@@ -97,53 +98,51 @@ calc_risk_WB <- function(para, X1, X2, X3,
 
     #if we pre-integrate t2 from t1 to t_cutoff
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,index){
-        return( h1_const[index] * time_pt1^alpha1_m1 * (
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        h1_const[index] * time_pt1^alpha1_m1 * (
           (1 + theta*(H1_const[index] * time_pt1^alpha1 +
                         H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
             (1 + theta*(H1_const[index] * time_pt1^alpha1 +
                           H2_const[index] * time_pt1^alpha2 +
                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
-        ) )
-      }
+        )}
     } else{
-      f_joint_t1_both <- function(time_pt1,index){
-        return( gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
                     exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
-                  ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff - time_pt1)^alpha3)) )
+                  ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff - time_pt1)^alpha3))
       }
     }
 
     #if we pre-integrate t2 from t_cutoff to infinity
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,index){
-        return( h1_const[index] * time_pt1^alpha1_m1 *
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        h1_const[index] * time_pt1^alpha1_m1 *
                     (1 + theta * (H1_const[index] * time_pt1^alpha1 +
                                            H2_const[index] * time_pt1^alpha2 +
                                            H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
-              )
       }
     } else{
-      f_joint_t1_nonTerm <- function(time_pt1,index){
-        return( ( gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
                     exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
                                            H2_const[index] * time_pt1^alpha2 +
-                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))))
+                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))
       }
     }
 
     #if we pre-integrate t2 from t1 to infinity
     if(tolower(type) %in% c("marginal","m")){
       f_joint_t1_neither <- function(time_pt1,index){
-        return( h1_const[index] * time_pt1^alpha1_m1 *
+        h1_const[index] * time_pt1^alpha1_m1 *
                   (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                                        H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1) )
+                                        H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1)
       }
     } else{
-      f_joint_t1_neither <- function(time_pt1,index){
-        return( gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
+      f_joint_t1_neither <- function(time_pt1,t_cutoff,index){
+        gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
                     exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
-                                          H2_const[index] * time_pt1^alpha2) ) )
+                                          H2_const[index] * time_pt1^alpha2) )
       }
     }
 
@@ -151,48 +150,51 @@ calc_risk_WB <- function(para, X1, X2, X3,
     stop("model must be 'semi-markov'")
   }
 
-  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff, index=x)$value,
-                                error=function(cnd){
-                                  # message(cnd)
-                                  # cat("\n")
-                                  return(NA)})
-    })
+  if(n > 1){
+    if(t_length > 1){
+      out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither"),paste0("i",1:n)))
+    } else{
+      out_mat <- matrix(nrow=n,ncol=4,dimnames = list(paste0("i",1:n),c("p_ntonly","p_both","p_tonly","p_neither")))
+    }
+  } else{
+      out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither")))
+  }
 
-  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff, index=x)$value,
-                                error=function(cnd){
-                                  # message(cnd)
-                                  # cat("\n")
-                                  return(NA)})
-    })
+  for(t_ind in 1:t_length){
+    p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+                                                          t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                error=function(cnd){return(NA)}) })
 
-  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff, upper=Inf,index=x)$value,
-                                 error=function(cnd){
-                                   # message(cnd)
-                                   # cat("\n")
-                                   return(NA)})
-    })
+    p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
+                                               error=function(cnd){return(NA)}) })
 
-  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff, upper=Inf,index=x)$value,
-                               error=function(cnd){
-                                 # message(cnd)
-                                 # cat("\n")
-                                 return(NA)})
-    })
+    p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+                                                    error=function(cnd){return(NA)}) })
 
-  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff, index=x)$value,
-                     error=function(cnd){
-                       # message(cnd)
-                       # cat("\n")
-                       return(NA)})
-    })
-  # end <- Sys.time()
-  # print(end-begin)
-  # print("did both part of joint")
-  # return(p_ntonly + p_both)
-  return(cbind(p_ntonly=p_ntonly,
-              p_both=p_both,
-              p_tonly=p_tonly,
-              p_neither=p_neither_t2 + p_neither_joint))
+    p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+                                                        error=function(cnd){return(NA)}) })
+
+    p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
+                                                        t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                              error=function(cnd){return(NA)}) })
+
+    out_temp <- cbind(p_ntonly=p_ntonly,
+                      p_both=p_both,
+                      p_tonly=p_tonly,
+                      p_neither=p_neither_t2 + p_neither_joint)
+
+    if(n > 1){
+      if(t_length > 1){
+        out_mat[t_ind,,] <- t(out_temp)
+      } else{
+        out_mat <- out_temp
+      }
+    } else{
+      out_mat[t_ind,] <- out_temp
+    }
+  }
+
+  return(out_mat)
 }
 
 
@@ -215,6 +217,7 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   nP03 <- length(knots_list[[3]])
 
   n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+  t_length <- length(t_cutoff)
 
   if(frailty){
     nP0 <- nP01 + nP02 + nP03 + 1
@@ -252,9 +255,6 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
     nP3 <- 0
     eta3 <- 0
   }
-
-
-  n <- max(nrow(X1),nrow(X2),nrow(X3))
 
   stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
 
@@ -301,54 +301,53 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
 
     #if we pre-integrate t2 from t1 to t_cutoff
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,index){
-        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
           (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
             (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
                           Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                          Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1)
-        ))
+                          Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1))
       }
     } else{
-      f_joint_t1_both <- function(time_pt1,index){
-        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
                   exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
                                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
-                  ( 1 - exp(-gamma[index] * Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index]))) )
+                  ( 1 - exp(-gamma[index] * Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))
       }
     }
 
 
     #if we pre-integrate t2 from t_cutoff to infinity
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,index){
-        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
                   (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
                                   Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                                  Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1))
+                                  Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1)
       }
     } else{
-      f_joint_t1_nonTerm <- function(time_pt1,index){
-        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
                   exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
                                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                                         Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index]))))
+                                         Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))
       }
     }
 
     #if we pre-integrate t2 from t1 to infinity
     if(tolower(type) %in% c("marginal","m")){
       f_joint_t1_neither <- function(time_pt1,index){
-        return( haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
                     (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1) )
+                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1)
       }
     } else{
       f_joint_t1_neither <- function(time_pt1,index){
-        return( gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
                   exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) ) )
+                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )
       }
     }
 
@@ -356,46 +355,51 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
     stop("model must be 'semi-markov'")
   }
 
-  p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff, index=x)$value,
-                                              error=function(cnd){
-                                                # message(cnd)
-                                                # cat("\n")
-                                                return(NA)})
-  })
 
-  p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff, index=x)$value,
-                                             error=function(cnd){
-                                               # message(cnd)
-                                               # cat("\n")
-                                               return(NA)})
-  })
 
-  p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff, upper=Inf,index=x)$value,
-                                                  error=function(cnd){
-                                                    # message(cnd)
-                                                    # cat("\n")
-                                                    return(NA)})
-  })
+  if(n > 1){
+    if(t_length > 1){
+      out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither"),paste0("i",1:n)))
+    } else{
+      out_mat <- matrix(nrow=n,ncol=4,dimnames = list(paste0("i",1:n),c("p_ntonly","p_both","p_tonly","p_neither")))
+    }
+  } else{
+    out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither")))
+  }
 
-  p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff, upper=Inf,index=x)$value,
-                                                      error=function(cnd){
-                                                        # message(cnd)
-                                                        # cat("\n")
-                                                        return(NA)})
-  })
+  for(t_ind in 1:t_length){
 
-  p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff, index=x)$value,
-                                            error=function(cnd){
-                                              # message(cnd)
-                                              # cat("\n")
-                                              return(NA)})
-  })
-  # end <- Sys.time()
-  # print(end-begin)
-  # print("did both part of joint")
-  # return(p_ntonly + p_both)
-  return(cbind(p_ntonly=p_ntonly,
-               p_both=p_both,
-               p_tonly=p_tonly,
-               p_neither=p_neither_t2 + p_neither_joint))
+    p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+                                                          t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                error=function(cnd){return(NA)}) })
+
+    p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
+                                               error=function(cnd){return(NA)}) })
+
+    p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf,index=x)$value,
+                                                    error=function(cnd){return(NA)}) })
+
+    p_neither_joint <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+                                                       error=function(cnd){return(NA)}) })
+
+    p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
+                                                        t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                              error=function(cnd){return(NA)}) })
+
+    out_temp <- cbind(p_ntonly=p_ntonly,
+                      p_both=p_both,
+                      p_tonly=p_tonly,
+                      p_neither=p_neither_t2 + p_neither_joint)
+    if(n > 1){
+      if(t_length > 1){
+        out_mat[t_ind,,] <- t(out_temp)
+      } else{
+        out_mat <- out_temp
+      }
+    } else{
+      out_mat[t_ind,] <- out_temp
+    }
+  }
+
+  return(out_mat)
 }
