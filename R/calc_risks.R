@@ -403,3 +403,152 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
 
   return(out_mat)
 }
+
+
+
+get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
+
+  n <- length(y1)
+  t_length <- length(t_cutoff)
+
+  if(n > 1){
+    if(t_length > 1){
+      out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("ntonly","both","tonly","neither"),paste0("i",1:n)))
+    } else{
+      out_mat <- matrix(nrow=n,ncol=4,dimnames = list(paste0("i",1:n),c("ntonly","both","tonly","neither")))
+    }
+  } else{
+    out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("ntonly","both","tonly","neither")))
+  }
+
+  for(t_ind in 1:t_length){
+
+    #For cases where y=t_cutoff, I consider events that happened exactly at t_cutoff in categorization.
+    neither <- t_cutoff[t_ind] < y1 | #neither
+                y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 0 #neither
+    ntonly <- y1 <= t_cutoff[t_ind] & t_cutoff[t_ind] < y2 | #ntonly
+                      y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 0 #ntonly
+    tonly <- y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 1 #tonly
+    both <- y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 1 #both
+
+    out_temp <- cbind(ntonly=as.numeric(ntonly),
+                      both=as.numeric(both),
+                      tonly=as.numeric(tonly),
+                      neither=as.numeric(neither))
+
+    if(n > 1){
+      if(t_length > 1){
+        out_mat[t_ind,,] <- t(out_temp)
+      } else{
+        out_mat <- out_temp
+      }
+    } else{
+      out_mat[t_ind,] <- out_temp
+    }
+  }
+
+  return(out_mat)
+}
+
+
+get_ipcw_mat <- function(y2,delta2,t_cutoff){
+
+  # browser()
+  n <- length(y2)
+  t_length <- length(t_cutoff)
+
+  #this is Ghat, a non-parametric model of the 'survival distribution' of censoring var C.
+  sfcens <- survival::survfit(survival::Surv(y2, delta2==0) ~ 1)
+
+  #* want to get Ghat(z) where
+  #* z=y2- if y2<=s and delta2=1,
+  #* z=Inf if y2<s and delta2=0, (aka, 1/Ghat(z)=0, I know they're subtly different)
+  #* z=s if s=y2 and delta2=0,
+  #* z=s if s<y2
+  #*
+  #* so, we define
+  #* z = min(y2,s)
+  #* then change z=y2- if y2<=s and delta2=1
+  #* then change z=Inf if y2< s and delta2=0 (again, technically change 1/Ghat(z)=0 for these obs but still)
+  #* and that should do it! (I hope)
+
+  ipcw_mat <- matrix(nrow=n,ncol=t_length,dimnames = list(paste0("i",1:n),paste0("t",t_cutoff)))
+  for(t_ind in 1:t_length){
+    #vector of min(ttilde,t)
+    y_last <- pmin(y2,t_cutoff[t_ind])
+    if(sum(y2 <= t_cutoff[t_ind] & delta2==1)>0){
+      y_last[y2 <= t_cutoff[t_ind] & delta2==1] <- y_last[y2 <= t_cutoff[t_ind] & delta2==1] - 1e-8
+    }
+    y_last_cens <- rep(NA,n)
+    y_last_cens[order(y_last)] <- summary(sfcens, times = y_last, extend=TRUE)$surv
+    if(sum(y_last < t_cutoff[t_ind] & delta2==0) > 0){
+      y_last_cens[y2 < t_cutoff[t_ind] & delta2==0] <- Inf
+    }
+    ipcw_mat[,t_ind] <- 1/y_last_cens
+  }
+
+  ipcw_mat
+
+}
+
+
+compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
+  #this function is for brier and kl scores, while the below function is for the AUC
+  # browser()
+  if(length(dim(outcome_mat))==3){
+    if(tolower(score) %in% c("brier")){
+      out <- apply( t(apply((outcome_mat - pred_mat)^2,
+                            MARGIN = c(1,3),
+                            FUN = sum)) *
+                      ipcw_mat, MARGIN = 2, FUN = mean)
+    } else{
+      out <- apply( t(apply(-outcome_mat*log(pred_mat),
+                            MARGIN = c(1,3),
+                            FUN = sum)) *
+                      ipcw_mat, MARGIN = 2, FUN = mean)
+    }
+  } else{ #this must mean that there is only a single time cutoff, so the input mats are n by 4 and weights is just a vector
+    if(tolower(score) %in% c("brier")){
+      out <- colMeans( apply((outcome_mat - pred_mat)^2,
+                            MARGIN = c(1),
+                            FUN = sum) * ipcw_mat)
+    } else{
+      out <- colMeans( apply(-outcome_mat*log(pred_mat),
+                         MARGIN = c(1),
+                         FUN = sum) * ipcw_mat)
+    }
+  }
+  return(out)
+
+}
+
+
+compute_auc <- function(simData,t_cutoff, pred_mat){
+  #For now, this one is only implemented for when these are just matrices, aka for a single choice of t.
+  #need pred_mat to be from same value as t_cutoff, however!
+
+  # browser()
+
+  outcomes <- simData %>% select(y1,delta1,y2,delta2) %>%
+    mutate(nonterm_comp_risk_time = ifelse(y1 < y2, y1, y2),
+           comp_risk_event = ifelse( (y1 == y2) & delta2==1,2,ifelse(y1 == y2 & delta2==0,0,1))
+    )
+
+  #treats terminal outcome as a competing risk
+  ROC_nonterm <- timeROC::timeROC(T=outcomes$nonterm_comp_risk_time,
+                           delta=outcomes$comp_risk_event,
+                           marker=pred_mat[,"p_ntonly"] + pred_mat[,"p_both"],
+                           cause=1,weighting="marginal",
+                           times=t_cutoff,
+                           iid=TRUE)
+
+  ROC_term <- timeROC::timeROC(T=outcomes$y2,
+                        delta=outcomes$delta2,
+                        marker=pred_mat[,"p_tonly"] + pred_mat[,"p_both"],
+                        cause=1,weighting="marginal",
+                        times=t_cutoff,
+                        iid=TRUE)
+
+  return(c(AUC_nonterm = ROC_nonterm$AUC_1[2],
+           AUC_term = ROC_term$AUC[2]))
+}
