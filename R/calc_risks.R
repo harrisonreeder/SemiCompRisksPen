@@ -1,4 +1,20 @@
-calc_risk_WB <- function(para, X1, X2, X3,
+#' Calculate absolute risk profiles
+#'
+#' This function calculates absolute risk profiles under weibull baseline hazard specifications.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param t_cutoff Numeric vector indicating the time(s) to compute the risk profile.
+#' @param tol Numeric value for the tolerance of the numerical integration procedure.
+#' @param type String either indicating 'marginal' for population-averaged probabilities,
+#'   or 'conditional' for probabilities computed at the specified gamma
+#' @param gamma Numeric value indicating the fixed level of the frailty assumed for predicted probabilities,
+#'   if 'type' is set to 'conditional'
+#'
+#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
+#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
+#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
+#' @export
+calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
                          t_cutoff, tol=1e-3, frailty=TRUE,
                          type="marginal", gamma=1,
                          model="semi-markov"){
@@ -7,7 +23,7 @@ calc_risk_WB <- function(para, X1, X2, X3,
   ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
   ##*********************************************************************##
 
-  n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+  n <- max(1,nrow(Xmat1),nrow(Xmat2),nrow(Xmat3))
   t_length <- length(t_cutoff)
 
   if(frailty){
@@ -22,26 +38,26 @@ calc_risk_WB <- function(para, X1, X2, X3,
     gamma <- rep(1,n)
   }
 
-  if(!is.null(X1) && !(ncol(X1)==0)){
-    nP1 <- ncol(X1)
+  if(!is.null(Xmat1) && !(ncol(Xmat1)==0)){
+    nP1 <- ncol(Xmat1)
     beta1 <- para[(1+nP0):(nP0+nP1)]
-    eta1 <- as.vector(X1 %*% beta1)
+    eta1 <- as.vector(Xmat1 %*% beta1)
   } else{
     nP1 <- 0
     eta1 <- 0
   }
-  if(!is.null(X2) && !(ncol(X2)==0)){
-    nP2 <- ncol(X2)
+  if(!is.null(Xmat2) && !(ncol(Xmat2)==0)){
+    nP2 <- ncol(Xmat2)
     beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
-    eta2 <- as.vector(X2 %*% beta2)
+    eta2 <- as.vector(Xmat2 %*% beta2)
   } else{
     nP2 <- 0
     eta2 <- 0
   }
-  if(!is.null(X3) && !(ncol(X3)==0)){
-    nP3 <- ncol(X3)
+  if(!is.null(Xmat3) && !(ncol(Xmat3)==0)){
+    nP3 <- ncol(Xmat3)
     beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-    eta3 <- as.vector(X3 %*% beta3)
+    eta3 <- as.vector(Xmat3 %*% beta3)
   } else{
     nP3 <- 0
     eta3 <- 0
@@ -214,7 +230,17 @@ calc_risk_WB <- function(para, X1, X2, X3,
 
 
 
-calc_risk_PW <- function(para, X1, X2, X3, knots_list,
+#' Calculate absolute risk profiles
+#'
+#' This function calculates absolute risk profiles under weibull baseline hazard specifications.
+#'
+#' @inheritParams calc_risk_PW
+#'
+#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
+#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
+#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
+#' @export
+calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
                          t_cutoff, tol=1e-3, frailty=TRUE,
                          type="marginal", gamma=1, model="semi-markov"){
   #notice reduced default tolerance
@@ -231,7 +257,7 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
   nP02 <- length(knots_list[[2]])
   nP03 <- length(knots_list[[3]])
 
-  n <- max(1,nrow(X1),nrow(X2),nrow(X3))
+  n <- max(1,nrow(Xmat1),nrow(Xmat2),nrow(Xmat3))
   t_length <- length(t_cutoff)
 
   if(frailty){
@@ -246,26 +272,26 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
     gamma <- rep(1,n)
   }
 
-  if(!is.null(X1) && !(ncol(X1)==0)){
-    nP1 <- ncol(X1)
+  if(!is.null(Xmat1) && !(ncol(Xmat1)==0)){
+    nP1 <- ncol(Xmat1)
     beta1 <- para[(1+nP0):(nP0+nP1)]
-    eta1 <- as.vector(X1 %*% beta1)
+    eta1 <- as.vector(Xmat1 %*% beta1)
   } else{
     nP1 <- 0
     eta1 <- 0
   }
-  if(!is.null(X2) && !(ncol(X2)==0)){
-    nP2 <- ncol(X2)
+  if(!is.null(Xmat2) && !(ncol(Xmat2)==0)){
+    nP2 <- ncol(Xmat2)
     beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
-    eta2 <- as.vector(X2 %*% beta2)
+    eta2 <- as.vector(Xmat2 %*% beta2)
   } else{
     nP2 <- 0
     eta2 <- 0
   }
-  if(!is.null(X3) && !(ncol(X3)==0)){
-    nP3 <- ncol(X3)
+  if(!is.null(Xmat3) && !(ncol(Xmat3)==0)){
+    nP3 <- ncol(Xmat3)
     beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-    eta3 <- as.vector(X3 %*% beta3)
+    eta3 <- as.vector(Xmat3 %*% beta3)
   } else{
     nP3 <- 0
     eta3 <- 0
@@ -437,6 +463,16 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
 
 
 
+#' Get matrix of observed outcome categories
+#'
+#' This function returns a matrix giving the observed outcome categories of each observation at various
+#'   time cutoffs.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @inheritParams calc_risk_PW
+#'
+#' @return a matrix or array.
+#' @export
 get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
 
   n <- length(y1)
@@ -484,6 +520,16 @@ get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
 }
 
 
+#' Get inverse probability of censoring weights
+#'
+#' This function returns a vector of inverse probability of censoring weights from an unadjusted Cox model
+#'   for censoring times.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @inheritParams calc_risk_PW
+#'
+#' @return a vector.
+#' @export
 get_ipcw_mat <- function(y2,delta2,t_cutoff){
 
   # browser()
@@ -525,6 +571,18 @@ get_ipcw_mat <- function(y2,delta2,t_cutoff){
 }
 
 
+#' Compute prediction performance score
+#'
+#' This function takes in all of the ingredients needed for prediction validation,
+#'   and returns the corresponding scores.
+#'
+#' @param outcome_mat Output from get_outcome_mat function
+#' @param pred_mat Output from calc_risks function
+#' @param ipcw_mat Output from get_ipcw_mat function
+#' @param score String indicating whether 'brier' score, or 'entropy' should be computed.
+#'
+#' @return a vector.
+#' @export
 compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
   #this function is for brier and kl scores, while the below function is for the AUC
   # browser()
