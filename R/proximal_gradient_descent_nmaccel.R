@@ -21,7 +21,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                               penalty_fusedbaseline, lambda_fusedbaseline,
                                               penweights_list, mu_smooth_fused,
                                               step_size_min=1e-6, step_size_max=1e6,
-                                              step_size_init_x=1,step_size_init_y=1,
+                                              step_size_init_x=1,step_size_init_y=1, select_tol = 1e-4,
                                               step_size_scale=0.5, #no checks implemented on these values!!
                                               step_delta=0.5,ball_R=Inf, maxit=300,
                                               conv_crit = "nll_pen_change",
@@ -522,6 +522,16 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
 
 
   finalVals <- as.numeric(xnext)
+
+  #for some reason, the fusion prox step can sometimes induce very small nonzero
+  #beta values in estimates that are supposed to be 0, so for now we threshold them back to 0.
+  #replace any of the betas that are under the selection tolerance with 0, ignoring the baseline variables
+  if(nP1+nP2+nP3 > 0){
+    if(any(abs(finalVals[(1+nP0):nPtot]) < select_tol)) {
+      finalVals[(1+nP0):nPtot][ abs(finalVals[(1+nP0):nPtot]) < select_tol] <- 0
+    }
+  }
+
   names(finalVals) <- names(para)
 
   #Here, report final nll on the SUM scale! No division by n

@@ -188,7 +188,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                  penweights_list=penweights_list, mu_smooth_fused=mu_smooth_fused,
                                                  step_size_init=step_size_init_innermost,
                                                  step_size_min=step_size_min,step_size_max=step_size_max,
-                                                 step_size_scale=step_size_scale,
+                                                 step_size_scale=step_size_scale, select_tol=select_tol,
                                                  maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                  ball_R=Inf, verbose=verbose)
           }
@@ -205,7 +205,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                          step_size_init_x=step_size_init_innermost,
                                                          step_size_init_y=step_size_init_innermost,
                                                          step_size_min=step_size_min,step_size_max=step_size_max,
-                                                         step_size_scale=step_size_scale,
+                                                         step_size_scale=step_size_scale, select_tol = select_tol,
                                                          maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
                                                          ball_R=Inf, verbose=verbose)
           }
@@ -217,7 +217,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                          penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef=lambda_fusedcoef,
                                          penalty_fusedbaseline=penalty_fusedbaseline, lambda_fusedbaseline=lambda_fusedbaseline,
                                          penweights_list=penweights_list,
-                                         mm_epsilon=mm_epsilon,
+                                         mm_epsilon=mm_epsilon, select_tol = select_tol,
                                          verbose=verbose, maxit=maxit,step_size_min=step_size_min,
                                          conv_crit=conv_crit,conv_tol=conv_tol,num_restarts=2)
           }
