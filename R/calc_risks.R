@@ -183,6 +183,21 @@ calc_risk_WB <- function(para, X1, X2, X3,
                       p_tonly=p_tonly,
                       p_neither=p_neither_t2 + p_neither_joint)
 
+    #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
+    #from the other categories. However, we don't want any to be negative.
+    #I will also supply a warning if any of the rows are way off from 1.
+    out_temp <- t(apply(out_temp,1,
+                        function(x){
+                          if(sum(is.na(x))==1){
+                            x[is.na(x)]<- max(1-sum(x,na.rm=TRUE),0)
+                          }
+                          return(x)}))
+    if(any(is.na(out_temp)) | any(abs(1-rowSums(out_temp))>tol)){
+      warning(paste0("some predicted probabilities do not sum to within",tol,"of 1."))
+    }
+
+
+
     if(n > 1){
       if(t_length > 1){
         out_mat[t_ind,,] <- t(out_temp)
@@ -390,6 +405,22 @@ calc_risk_PW <- function(para, X1, X2, X3, knots_list,
                       p_both=p_both,
                       p_tonly=p_tonly,
                       p_neither=p_neither_t2 + p_neither_joint)
+
+
+    #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
+    #from the other categories. However, we don't want any to be negative.
+    #I will also supply a warning if any of the rows are way off from 1.
+    out_temp <- t(apply(out_temp,1,
+                        function(x){
+                          if(sum(is.na(x))==1){
+                            x[is.na(x)]<- max(1-sum(x,na.rm=TRUE),0)
+                          }
+                          return(x)}))
+    if(any(is.na(out_temp)) | any(abs(1-rowSums(out_temp))>tol)){
+      warning(paste0("some predicted probabilities do not sum to within",tol,"of 1."))
+    }
+
+
     if(n > 1){
       if(t_length > 1){
         out_mat[t_ind,,] <- t(out_temp)
@@ -430,6 +461,8 @@ get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
                       y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 0 #ntonly
     tonly <- y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 1 #tonly
     both <- y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 1 #both
+
+
 
     out_temp <- cbind(ntonly=as.numeric(ntonly),
                       both=as.numeric(both),
