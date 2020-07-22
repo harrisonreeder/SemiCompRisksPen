@@ -38,6 +38,7 @@ proximal_gradient_descent(
   step_size_scale = 1/2,
   ball_R = Inf,
   maxit = 300,
+  select_tol = 1e-04,
   conv_crit = "nll_pen_change",
   conv_tol = if (lambda > 0) lambda/4 else 1e-06,
   verbose
@@ -112,6 +113,8 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.}
 
 \item{maxit}{Positive integer maximum number of iterations.}
+
+\item{select_tol}{Positive numeric value for thresholding estimates to be equal to zero.}
 
 \item{conv_crit}{String (possibly vector) giving the convergence criterion.}
 

@@ -155,7 +155,7 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
                                         H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1)
       }
     } else{
-      f_joint_t1_neither <- function(time_pt1,t_cutoff,index){
+      f_joint_t1_neither <- function(time_pt1,index){
         gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
                     exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
                                           H2_const[index] * time_pt1^alpha2) )
@@ -177,20 +177,20 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
   }
 
   for(t_ind in 1:t_length){
-    p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
                                                           t_cutoff=t_cutoff[t_ind], index=x)$value,
                                                 error=function(cnd){return(NA)}) })
 
-    p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
+    p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
                                                error=function(cnd){return(NA)}) })
 
-    p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+    p_neither_t2 <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
                                                     error=function(cnd){return(NA)}) })
 
-    p_neither_joint <-  sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+    p_neither_joint <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
                                                         error=function(cnd){return(NA)}) })
 
-    p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
+    p_both <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
                                               error=function(cnd){return(NA)}) })
 
@@ -234,7 +234,8 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
 #'
 #' This function calculates absolute risk profiles under weibull baseline hazard specifications.
 #'
-#' @inheritParams calc_risk_PW
+#' @inheritParams calc_risk_WB
+#' @inheritParams simID_PW
 #'
 #' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
 #'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
@@ -410,20 +411,20 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
 
   for(t_ind in 1:t_length){
 
-    p_ntonly <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
                                                           t_cutoff=t_cutoff[t_ind], index=x)$value,
                                                 error=function(cnd){return(NA)}) })
 
-    p_tonly <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
+    p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
                                                error=function(cnd){return(NA)}) })
 
-    p_neither_t2 <- sapply(1:n,function(x){tryCatch(integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf,index=x)$value,
+    p_neither_t2 <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf,index=x)$value,
                                                     error=function(cnd){return(NA)}) })
 
-    p_neither_joint <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
+    p_neither_joint <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
                                                        error=function(cnd){return(NA)}) })
 
-    p_both <- sapply(1:n,function(x){tryCatch(integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
+    p_both <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
                                               error=function(cnd){return(NA)}) })
 
@@ -469,7 +470,7 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
 #'   time cutoffs.
 #'
 #' @inheritParams proximal_gradient_descent
-#' @inheritParams calc_risk_PW
+#' @inheritParams calc_risk_WB
 #'
 #' @return a matrix or array.
 #' @export
@@ -526,7 +527,7 @@ get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
 #'   for censoring times.
 #'
 #' @inheritParams proximal_gradient_descent
-#' @inheritParams calc_risk_PW
+#' @inheritParams calc_risk_WB
 #'
 #' @return a vector.
 #' @export

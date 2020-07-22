@@ -10,7 +10,9 @@ Authors@R:
 Description: This package provides penalized estimation methods for semi-competing risks outcomes.
 License: GPL-3
 Suggests: 
-    testthat
+    testthat,
+    timeROC,
+    dplyr
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

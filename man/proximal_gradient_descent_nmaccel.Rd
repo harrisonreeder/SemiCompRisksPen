@@ -36,6 +36,7 @@ proximal_gradient_descent_nmaccel(
   step_size_max = 1e+06,
   step_size_init_x = 1,
   step_size_init_y = 1,
+  select_tol = 1e-04,
   step_size_scale = 0.5,
   step_delta = 0.5,
   ball_R = Inf,
@@ -141,6 +142,8 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 \item{step_size_max}{Positive numeric value for the maximum allowable step size to allow by size increase at each iteration.}
 
 \item{step_size_init_x, step_size_init_y}{Positive numeric values for the initial step sizes.}
+
+\item{select_tol}{Positive numeric value for thresholding estimates to be equal to zero.}
 
 \item{step_size_scale}{Positive numeric value for the multiplicative change in step size at each step of backtracking.}
 
