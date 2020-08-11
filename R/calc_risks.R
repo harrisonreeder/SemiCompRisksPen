@@ -546,6 +546,8 @@ get_ipcw_mat <- function(y2,delta2,t_cutoff){
   #* z=s if s=y2 and delta2=0,
   #* z=s if s<y2
   #*
+  #*I think this is maybe a weeee bit different than Graf (1999) only when s=y2 and delta2=0
+  #*
   #* so, we define
   #* z = min(y2,s)
   #* then change z=y2- if y2<=s and delta2=1
@@ -615,13 +617,14 @@ compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
 }
 
 
-compute_auc <- function(simData,t_cutoff, pred_mat){
+compute_auc <- function(dat,t_cutoff, pred_mat){
   #For now, this one is only implemented for when these are just matrices, aka for a single choice of t.
   #need pred_mat to be from same value as t_cutoff, however!
 
+
   # browser()
 
-  outcomes <- simData %>% select(y1,delta1,y2,delta2) %>%
+  outcomes <- dat %>% select(y1,delta1,y2,delta2) %>%
     mutate(nonterm_comp_risk_time = ifelse(y1 < y2, y1, y2),
            comp_risk_event = ifelse( (y1 == y2) & delta2==1,2,ifelse(y1 == y2 & delta2==0,0,1))
     )
