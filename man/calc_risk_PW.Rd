@@ -54,5 +54,5 @@ of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matri
 If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
 }
 \description{
-This function calculates absolute risk profiles under weibull baseline hazard specifications.
+This function calculates absolute risk profiles under piecewise constant baseline hazard specifications.
 }
