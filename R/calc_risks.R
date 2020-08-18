@@ -232,7 +232,7 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
 
 #' Calculate absolute risk profiles
 #'
-#' This function calculates absolute risk profiles under weibull baseline hazard specifications.
+#' This function calculates absolute risk profiles under piecewise constant baseline hazard specifications.
 #'
 #' @inheritParams calc_risk_WB
 #' @inheritParams simID_PW
@@ -540,17 +540,22 @@ get_ipcw_mat <- function(y2,delta2,t_cutoff){
   #this is Ghat, a non-parametric model of the 'survival distribution' of censoring var C.
   sfcens <- survival::survfit(survival::Surv(y2, delta2==0) ~ 1)
 
-  #* want to get Ghat(z) where
+  #* want to get Ghat(z) where (following Graf 1999 'three categories')
+  #* Category 1:
   #* z=y2- if y2<=s and delta2=1,
-  #* z=Inf if y2<s and delta2=0, (aka, 1/Ghat(z)=0, I know they're subtly different)
-  #* z=s if s=y2 and delta2=0,
+  #* Category 2:
   #* z=s if s<y2
-  #*
-  #*I think this is maybe a weeee bit different than Graf (1999) only when s=y2 and delta2=0
+  #* Category 3:
+  #* z=Inf if y2<s and delta2=0, (aka, 1/Ghat(z)=0, I know they're subtly different)
+  #* z=s if s=y2 and delta2=0, #this one situation is what I'm unsure about
+  #* because graf and spitoni would say that if s=y2 and delta2=0, then z=Inf and result should be tossed.
+  #* below I defer to them, but I'm just noting that to me there is logic in the other direction.
   #*
   #* so, we define
   #* z = min(y2,s)
   #* then change z=y2- if y2<=s and delta2=1
+  #* then change z=Inf if y2<=s and delta2=0 (again, technically change 1/Ghat(z)=0 for these obs but still)
+  #*
   #* then change z=Inf if y2< s and delta2=0 (again, technically change 1/Ghat(z)=0 for these obs but still)
   #* and that should do it! (I hope)
 
@@ -563,9 +568,15 @@ get_ipcw_mat <- function(y2,delta2,t_cutoff){
     }
     y_last_cens <- rep(NA,n)
     y_last_cens[order(y_last)] <- summary(sfcens, times = y_last, extend=TRUE)$surv
-    if(sum(y_last < t_cutoff[t_ind] & delta2==0) > 0){
-      y_last_cens[y2 < t_cutoff[t_ind] & delta2==0] <- Inf
+
+    #now, to eliminate the the 'censored' observations
+    if(sum(y_last <= t_cutoff[t_ind] & delta2==0) > 0){
+      y_last_cens[y2 <= t_cutoff[t_ind] & delta2==0] <- Inf
     }
+    #below is my former definition, but I will defer to graf and spitoni above
+    # if(sum(y_last < t_cutoff[t_ind] & delta2==0) > 0){
+    #   y_last_cens[y2 < t_cutoff[t_ind] & delta2==0] <- Inf
+    # }
     ipcw_mat[,t_ind] <- 1/y_last_cens
   }
 
@@ -615,6 +626,122 @@ compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
   return(out)
 
 }
+
+
+
+#' Compute IPCW-adjusted Hypervolume Under the Manifold
+#'
+#' This function computes the IPCW-adjusted Hypervolume under the manifold, as in Lee (unpublished).
+#'
+#' @inheritParams compute_score
+#'
+#' @return a scalar
+#' @export
+compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
+  #based on code from https://github.com/gaoming96/mcca/blob/master/R/hum.R
+  #which I find a little hard to read because they put things in terms of the kronecker operation
+  #but ultimately, things work out it seems
+  #I added in the inverse probability weighting
+  #maybe tomorrow I'll rewrite this so that it's neater
+
+  if(length(dim(outcome_mat))==3){
+    stop("for now, hum can only be computed at a single t_cutoff point")
+  }
+
+  pp <- pred_mat
+  ipcw_vec <- as.vector(ipcw_mat)
+
+  #first, let's just consider the case of t_cutoff being a single point, so everything here is matrices
+  n <- nrow(outcome_mat)
+  #n is the sample size
+  a <- matrix(0,n,4);
+  one1=a;
+  one1[,1]=1;
+  one2=a;
+  one2[,2]=1;
+  one3=a;
+  one3[,3]=1;
+  one4=a;
+  one4[,4]=1;
+
+  x1=which(outcome_mat[,1]==1);
+  x2=which(outcome_mat[,2]==1);
+  x3=which(outcome_mat[,3]==1);
+  x4=which(outcome_mat[,4]==1);
+  n1=length(x1)
+  n2=length(x2)
+  n3=length(x3)
+  n4=length(x4)
+
+  dd1=pp-one1;
+  dd2=pp-one2;
+  dd3=pp-one3;
+  dd4=pp-one4;
+
+  jd1=sqrt(dd1[,1]^2+dd1[,2]^2+dd1[,3]^2+dd1[,4]^2);
+  jd2=sqrt(dd2[,1]^2+dd2[,2]^2+dd2[,3]^2+dd2[,4]^2);
+  jd3=sqrt(dd3[,1]^2+dd3[,2]^2+dd3[,3]^2+dd3[,4]^2);
+  jd4=sqrt(dd4[,1]^2+dd4[,2]^2+dd4[,3]^2+dd4[,4]^2);
+  jd1=exp(jd1);
+  jd2=exp(jd2);
+  jd3=exp(jd3);
+  jd4=exp(jd4);
+
+  #pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
+  #   1111  1211
+  #   1112  1212
+  #   1121  1221
+  #   1122  1222
+  #   2111  2211
+  #   2112  2212
+  #   2121  2221
+  #   2122  2222
+  mt1=kronecker(kronecker(jd1[x1]%*%t(jd2[x2]),jd3[x3]),jd4[x4]);
+  mt7=kronecker(kronecker(jd1[x1]%*%t(jd2[x2]),jd4[x3]),jd3[x4]);
+  mt2=kronecker(kronecker(jd1[x1]%*%t(jd3[x2]),jd2[x3]),jd4[x4]);
+  mt8=kronecker(kronecker(jd1[x1]%*%t(jd3[x2]),jd4[x3]),jd2[x4]);
+  mt9 =kronecker(kronecker(jd1[x1]%*%t(jd4[x2]),jd2[x3]),jd3[x4]);
+  mt10=kronecker(kronecker(jd1[x1]%*%t(jd4[x2]),jd3[x3]),jd2[x4]);
+  mt3 =kronecker(kronecker(jd2[x1]%*%t(jd1[x2]),jd3[x3]),jd4[x4]);
+  mt11=kronecker(kronecker(jd2[x1]%*%t(jd1[x2]),jd4[x3]),jd3[x4]);
+  mt4 =kronecker(kronecker(jd2[x1]%*%t(jd3[x2]),jd1[x3]),jd4[x4]);
+  mt12=kronecker(kronecker(jd2[x1]%*%t(jd3[x2]),jd4[x3]),jd1[x4]);
+  mt13=kronecker(kronecker(jd2[x1]%*%t(jd4[x2]),jd3[x3]),jd1[x4]);
+  mt14=kronecker(kronecker(jd2[x1]%*%t(jd4[x2]),jd1[x3]),jd3[x4]);
+  mt5 =kronecker(kronecker(jd3[x1]%*%t(jd2[x2]),jd1[x3]),jd4[x4]);
+  mt15=kronecker(kronecker(jd3[x1]%*%t(jd2[x2]),jd4[x3]),jd1[x4]);
+  mt6 =kronecker(kronecker(jd3[x1]%*%t(jd1[x2]),jd2[x3]),jd4[x4]);
+  mt16=kronecker(kronecker(jd3[x1]%*%t(jd1[x2]),jd4[x3]),jd2[x4]);
+  mt23=kronecker(kronecker(jd3[x1]%*%t(jd4[x2]),jd1[x3]),jd2[x4]);
+  mt24=kronecker(kronecker(jd3[x1]%*%t(jd4[x2]),jd2[x3]),jd1[x4]);
+  mt17=kronecker(kronecker(jd4[x1]%*%t(jd1[x2]),jd2[x3]),jd3[x4]);
+  mt18=kronecker(kronecker(jd4[x1]%*%t(jd1[x2]),jd3[x3]),jd2[x4]);
+  mt19=kronecker(kronecker(jd4[x1]%*%t(jd2[x2]),jd1[x3]),jd3[x4]);
+  mt20=kronecker(kronecker(jd4[x1]%*%t(jd2[x2]),jd3[x3]),jd1[x4]);
+  mt21=kronecker(kronecker(jd4[x1]%*%t(jd3[x2]),jd1[x3]),jd2[x4]);
+  mt22=kronecker(kronecker(jd4[x1]%*%t(jd3[x2]),jd2[x3]),jd1[x4]);
+
+  #now, to compute the product of the weights for each of the four individuals at each entry
+  weight_mat=kronecker(kronecker(ipcw_vec[x1]%*%t(ipcw_vec[x2]),ipcw_vec[x3]),ipcw_vec[x4]);
+
+  #finally, to compute numerator
+  # num <- as.numeric(1e-10 > abs(mt1-pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6)))))))))))))))))))))
+  num <- 1*(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))))
+
+  hum <- sum(num*weight_mat)/sum(weight_mat)
+
+  cr=sum(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))));
+
+
+  #hypervolume under ROC manifold
+  hum=sum(num)/(n1*n2*n3*n4);
+
+  return(hum)
+
+
+
+}
+
 
 
 #' Compute AUC for Non-terminal and Terminal outcomes
