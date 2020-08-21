@@ -635,14 +635,14 @@ compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
 #'
 #' @inheritParams compute_score
 #'
-#' @return a scalar
+#' @return a scalar HUM
 #' @export
 compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   #based on code from https://github.com/gaoming96/mcca/blob/master/R/hum.R
   #which I find a little hard to read because they put things in terms of the kronecker operation
   #but ultimately, things work out it seems
   #I added in the inverse probability weighting
-  #maybe tomorrow I'll rewrite this so that it's neater
+  #maybe eventually I'll rewrite this so that it's neater
 
   if(length(dim(outcome_mat))==3){
     stop("for now, hum can only be computed at a single t_cutoff point")
@@ -678,6 +678,7 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   dd3=pp-one3;
   dd4=pp-one4;
 
+  #here, the 'brier score' used to assess correct categorization is computed on the exp scale, and each term is square rooted
   jd1=sqrt(dd1[,1]^2+dd1[,2]^2+dd1[,3]^2+dd1[,4]^2);
   jd2=sqrt(dd2[,1]^2+dd2[,2]^2+dd2[,3]^2+dd2[,4]^2);
   jd3=sqrt(dd3[,1]^2+dd3[,2]^2+dd3[,3]^2+dd3[,4]^2);
@@ -687,7 +688,7 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   jd3=exp(jd3);
   jd4=exp(jd4);
 
-  #pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
+  # resulting matrix pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
   #   1111  1211
   #   1112  1212
   #   1121  1221
@@ -724,25 +725,161 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   #now, to compute the product of the weights for each of the four individuals at each entry
   weight_mat=kronecker(kronecker(ipcw_vec[x1]%*%t(ipcw_vec[x2]),ipcw_vec[x3]),ipcw_vec[x4]);
 
-  #finally, to compute numerator
+  #finally, to compute numerator, multiply by 1 to turn it into numeric matrix
   # num <- as.numeric(1e-10 > abs(mt1-pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6)))))))))))))))))))))
   num <- 1*(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))))
-
   hum <- sum(num*weight_mat)/sum(weight_mat)
 
-  cr=sum(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))));
-
-
+  # cr=sum(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))));
   #hypervolume under ROC manifold
-  hum=sum(num)/(n1*n2*n3*n4);
+  # hum=sum(num)/(n1*n2*n3*n4);
 
   return(hum)
-
-
-
 }
 
 
+#' Compute IPCW-adjusted Polytomous Discrimination Index
+#'
+#' This function computes the IPCW-adjusted polytomous discrimination index. Proposed in Van Caster and presented in Li
+#'
+#' @inheritParams compute_score
+#'
+#' @return a scalar HUM
+#' @export
+compute_pdi <- function(outcome_mat, pred_mat, ipcw_mat){
+  #based on code from https://github.com/gaoming96/mcca/blob/master/R/pdi.R
+  #which I find a little hard to read because they put things in terms of the kronecker operation
+  #but ultimately, things work out it seems
+  #I added in the inverse probability weighting
+  #maybe eventually I'll rewrite this so that it's neater
+  if(length(dim(outcome_mat))==3){
+    stop("for now, pdi can only be computed at a single t_cutoff point")
+  }
+  #flag which subjects ended in which outcome category
+  x1=which(outcome_mat[,1]==1);
+  x2=which(outcome_mat[,2]==1);
+  x3=which(outcome_mat[,3]==1);
+  x4=which(outcome_mat[,4]==1);
+  n1=length(x1)
+  n2=length(x2)
+  n3=length(x3)
+  n4=length(x4)
+
+  #vector of ipcw weights, and then individual vectors corresponding to each outcome category
+  ipcw_vec <- as.vector(ipcw_mat)
+  ipcw1 <- ipcw_vec[x1]
+  ipcw2 <- ipcw_vec[x2]
+  ipcw3 <- ipcw_vec[x3]
+  ipcw4 <- ipcw_vec[x4]
+
+  #individual specific vectors with 0 weighted elements removed (to speed up computation)
+  ipcw1_nozero <- ipcw1[ipcw1 != 0]
+  ipcw2_nozero <- ipcw2[ipcw2 != 0]
+  ipcw3_nozero <- ipcw3[ipcw3 != 0]
+  ipcw4_nozero <- ipcw4[ipcw4 != 0]
+
+  #now, goal is to sum the product of every combination of subjects from the four categories
+  pdi_denom <- sum(kronecker(kronecker(ipcw1_nozero %*% t(ipcw2_nozero),ipcw3_nozero),ipcw4_nozero))
+  # ipcw234_mat <- as.matrix(expand.grid(ipcw2_nozero,ipcw3_nozero,ipcw4_nozero))
+  # ipcw134_mat <- as.matrix(expand.grid(ipcw1_nozero,ipcw3_nozero,ipcw4_nozero))
+  # ipcw124_mat <- as.matrix(expand.grid(ipcw1_nozero,ipcw2_nozero,ipcw4_nozero))
+  # ipcw123_mat <- as.matrix(expand.grid(ipcw1_nozero,ipcw2_nozero,ipcw3_nozero))
+  # sum(kronecker(X = ipcw1_nozero,Y = apply(X = ipcw234_mat,MARGIN = 1,FUN = prod)))
+
+  #separate matrices for subjects in each of the four observed categories
+  pv=pred_mat
+  pv1=pv[x1,]
+  pv2=pv[x2,]
+  pv3=pv[x3,]
+  pv4=pv[x4,]
+
+  #approach here is to compute PDI_i as in Van Caster (2012) SIM paper
+  # pdi1 <- pdi2 <- pdi3 <- pdi4 <- 0
+  pdi4_num <- pdi3_num <- pdi2_num <- pdi1_num <- 0
+
+  # there are a total of n_1 * n_2 * n_3 * n_4 combinations of members of the four groups
+  # out of all of those comparisons, in how many is p1 for the person in category 1 the highest?
+  # in order for the p1 from cat 1 to be the highest, it must be higher than each other one in turn,
+  # so, one computational simplification is to multiply the number of people in cat 2 who are lower, cat 3, and cat 4
+  # because multiplying corresponds with the number of total combinations, and thus, the total count.
+  # for(i in 1:n1){
+  #   pdi1=pdi1+sum(pv1[i,1]>pv2[,1])*sum(pv1[i,1]>pv3[,1])*sum(pv1[i,1]>pv4[,1])
+  # }
+  # for(i in 1:n2){
+  #   pdi2=pdi2+sum(pv2[i,2]>pv1[,2])*sum(pv2[i,2]>pv3[,2])*sum(pv2[i,2]>pv4[,2])
+  # }
+  # for(i in 1:n3){
+  #   pdi3=pdi3+sum(pv3[i,3]>pv1[,3])*sum(pv3[i,3]>pv2[,3])*sum(pv3[i,3]>pv4[,3])
+  # }
+  # for(i in 1:n4){
+  #   pdi4=pdi4+sum(pv4[i,4]>pv1[,4])*sum(pv4[i,4]>pv2[,4])*sum(pv4[i,4]>pv3[,4])
+  # }
+
+  #for IPCW, we instead compute the weighted numerators separately
+  for(i in 1:n1){
+    #create four vectors, with the ipcw weights for each of
+    #the relevant observations from each category that contribute to the PDI computation
+    outvec1 <- ipcw1[i]
+    if(outvec1 == 0){next}
+    outvec2 <- ipcw2[pv1[i,1]>pv2[,1]]
+    outvec2 <- outvec2[outvec2 != 0]
+    outvec3 <- ipcw3[pv1[i,1]>pv3[,1]]
+    outvec3 <- outvec3[outvec3 != 0]
+    outvec4 <- ipcw4[pv1[i,1]>pv4[,1]]
+    outvec4 <- outvec4[outvec4 != 0]
+
+    #next, rather than simply multiplying the number of contributors from each category as before,
+    #we need to actually multiply the weights for each combination of contributors, and sum those quantities up
+    pdi1_num <- pdi1_num + outvec1*sum(apply(X = as.matrix(expand.grid(outvec2,outvec3,outvec4)),
+                                     MARGIN = 1,
+                                     FUN = prod))
+  }
+  for(i in 1:n2){
+    outvec2 <- ipcw2[i]
+    if(outvec2 == 0){next}
+    outvec1 <- ipcw1[pv2[i,2]>pv1[,2]]
+    outvec1 <- outvec1[outvec1 != 0]
+    outvec3 <- ipcw3[pv2[i,2]>pv3[,2]]
+    outvec3 <- outvec3[outvec3 != 0]
+    outvec4 <- ipcw4[pv2[i,2]>pv4[,2]]
+    outvec4 <- outvec4[outvec4 != 0]
+    pdi2_num <- pdi2_num + outvec2*sum(apply(X = as.matrix(expand.grid(outvec1,outvec3,outvec4)),
+                                             MARGIN = 1,
+                                             FUN = prod))
+  }
+  for(i in 1:n3){
+    outvec3 <- ipcw3[i]
+    if(outvec3 == 0){next}
+    outvec1 <- ipcw1[pv3[i,3]>pv1[,3]]
+    outvec1 <- outvec1[outvec1 != 0]
+    outvec2 <- ipcw2[pv3[i,3]>pv2[,3]]
+    outvec2 <- outvec2[outvec2 != 0]
+    outvec4 <- ipcw4[pv3[i,3]>pv4[,3]]
+    outvec4 <- outvec4[outvec4 != 0]
+    pdi3_num <- pdi3_num + outvec3*sum(apply(X = as.matrix(expand.grid(outvec1,outvec2,outvec4)),
+                                             MARGIN = 1,
+                                             FUN = prod))
+  }
+  for(i in 1:n4){
+    outvec4 <- ipcw4[i]
+    if(outvec4 == 0){next}
+    outvec1 <- ipcw1[pv4[i,4]>pv1[,4]]
+    outvec1 <- outvec1[outvec1 != 0]
+    outvec2 <- ipcw2[pv4[i,4]>pv2[,4]]
+    outvec2 <- outvec2[outvec2 != 0]
+    outvec3 <- ipcw3[pv4[i,4]>pv3[,4]]
+    outvec3 <- outvec3[outvec3 != 0]
+    pdi4_num <- pdi4_num + outvec4*sum(apply(X = as.matrix(expand.grid(outvec1,outvec2,outvec3)),
+                                             MARGIN = 1,
+                                             FUN = prod))
+  }
+
+  # pdi<-(pdi1+pdi2+pdi3+pdi4)/(4*n1*n2*n3*n4)
+  pdi <- (pdi1_num + pdi2_num + pdi3_num + pdi4_num) / (4*pdi_denom)
+
+  return(pdi)
+
+}
 
 #' Compute AUC for Non-terminal and Terminal outcomes
 #'
