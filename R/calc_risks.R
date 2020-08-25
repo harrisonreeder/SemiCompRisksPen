@@ -636,14 +636,22 @@ compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
 #'
 #' @inheritParams compute_score
 #'
+<<<<<<< HEAD
 #' @return a scalar HUM
+=======
+#' @return a scalar
+>>>>>>> 4841dc33d62294ed194deaecf122bfd83bfa96d7
 #' @export
 compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   #based on code from https://github.com/gaoming96/mcca/blob/master/R/hum.R
   #which I find a little hard to read because they put things in terms of the kronecker operation
   #but ultimately, things work out it seems
   #I added in the inverse probability weighting
+<<<<<<< HEAD
   #maybe eventually I'll rewrite this so that it's neater
+=======
+  #maybe tomorrow I'll rewrite this so that it's neater
+>>>>>>> 4841dc33d62294ed194deaecf122bfd83bfa96d7
 
   if(length(dim(outcome_mat))==3){
     stop("for now, hum can only be computed at a single t_cutoff point")
@@ -679,7 +687,10 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   dd3=pp-one3;
   dd4=pp-one4;
 
+<<<<<<< HEAD
   #here, the 'brier score' used to assess correct categorization is computed on the exp scale, and each term is square rooted
+=======
+>>>>>>> 4841dc33d62294ed194deaecf122bfd83bfa96d7
   jd1=sqrt(dd1[,1]^2+dd1[,2]^2+dd1[,3]^2+dd1[,4]^2);
   jd2=sqrt(dd2[,1]^2+dd2[,2]^2+dd2[,3]^2+dd2[,4]^2);
   jd3=sqrt(dd3[,1]^2+dd3[,2]^2+dd3[,3]^2+dd3[,4]^2);
@@ -689,7 +700,11 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   jd3=exp(jd3);
   jd4=exp(jd4);
 
+<<<<<<< HEAD
   # resulting matrix pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
+=======
+  #pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
+>>>>>>> 4841dc33d62294ed194deaecf122bfd83bfa96d7
   #   1111  1211
   #   1112  1212
   #   1121  1221
@@ -726,6 +741,7 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   #now, to compute the product of the weights for each of the four individuals at each entry
   weight_mat=kronecker(kronecker(ipcw_vec[x1]%*%t(ipcw_vec[x2]),ipcw_vec[x3]),ipcw_vec[x4]);
 
+<<<<<<< HEAD
   #finally, to compute numerator, multiply by 1 to turn it into numeric matrix
   # num <- as.numeric(1e-10 > abs(mt1-pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6)))))))))))))))))))))
   num <- 1*(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))))
@@ -959,6 +975,26 @@ compute_nri <- function(outcome_mat, pred_mat1, pred_mat2, ipcw_mat){
   return(nri)
 
 }
+=======
+  #finally, to compute numerator
+  # num <- as.numeric(1e-10 > abs(mt1-pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6)))))))))))))))))))))
+  num <- 1*(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))))
+
+  hum <- sum(num*weight_mat)/sum(weight_mat)
+
+  cr=sum(mt1==pmin(mt7,pmin(mt8,pmin(mt9,pmin(mt10,pmin(mt11,pmin(mt12,pmin(mt13,pmin(mt14,pmin(mt15,pmin(mt16,pmin(mt17,pmin(mt18,pmin(mt19,pmin(mt20,pmin(mt21,pmin(mt22,pmin(mt23,pmin(mt24,pmin(pmin(pmin(pmin(pmin(mt1, mt2), mt3), mt4), mt5), mt6))))))))))))))))))));
+
+
+  #hypervolume under ROC manifold
+  hum=sum(num)/(n1*n2*n3*n4);
+
+  return(hum)
+
+
+
+}
+
+>>>>>>> 4841dc33d62294ed194deaecf122bfd83bfa96d7
 
 
 #' Compute AUC for Non-terminal and Terminal outcomes
