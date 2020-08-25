@@ -978,11 +978,16 @@ compute_auc <- function(dat,t_cutoff, pred_mat){
 
 
   # browser()
+  nonterm_comp_risk_time <- ifelse(dat$y1 < dat$y2, dat$y1, dat$y2)
+  comp_risk_event <- ifelse( (dat$y1 == dat$y2) & dat$delta2==1,2,ifelse(dat$y1 == dat$y2 & dat$delta2==0,0,1))
+  outcomes <- cbind(dat[,c("y1","delta1","y2","delta2")],
+                    nonterm_comp_risk_time=nonterm_comp_risk_time,
+                    comp_risk_event=comp_risk_event)
 
-  outcomes <- dat %>% dplyr::select(y1,delta1,y2,delta2) %>%
-    dplyr::mutate(nonterm_comp_risk_time = ifelse(y1 < y2, y1, y2),
-           comp_risk_event = ifelse( (y1 == y2) & delta2==1,2,ifelse(y1 == y2 & delta2==0,0,1))
-    )
+  # outcomes <- dat %>% dplyr::select(y1,delta1,y2,delta2) %>%
+  #   dplyr::mutate(nonterm_comp_risk_time = ifelse(y1 < y2, y1, y2),
+  #          comp_risk_event = ifelse( (y1 == y2) & delta2==1,2,ifelse(y1 == y2 & delta2==0,0,1))
+  #   )
 
   #treats terminal outcome as a competing risk
   ROC_nonterm <- timeROC::timeROC(T=outcomes$nonterm_comp_risk_time,
