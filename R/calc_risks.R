@@ -598,7 +598,8 @@ get_ipcw_mat <- function(y2,delta2,t_cutoff){
 #' @return a vector.
 #' @export
 compute_score <- function(outcome_mat, pred_mat, ipcw_mat, score="brier"){
-  #this function is for brier and kl scores, while the below function is for the AUC
+  #this function is for brier and kl scores (aka cross entropy)
+  #one weird thing is that in spitoni, the authors divide by n instead of by the sum of weights, is that right?
   # browser()
   if(length(dim(outcome_mat))==3){
     if(tolower(score) %in% c("brier")){
@@ -878,8 +879,87 @@ compute_pdi <- function(outcome_mat, pred_mat, ipcw_mat){
   pdi <- (pdi1_num + pdi2_num + pdi3_num + pdi4_num) / (4*pdi_denom)
 
   return(pdi)
+}
+
+
+#' Compute IPCW-adjusted Correct Classification Probability
+#'
+#' This function computes the IPCW-adjusted Correct Classification Probability. Presented in Li (2019)
+#'
+#' @inheritParams compute_score
+#'
+#' @return a scalar CCP
+#' @export
+compute_ccp <- function(outcome_mat, pred_mat, ipcw_mat){
+
+  #compute the ccp directly as the average of correct classification overall
+    #this implicitly weights the categories by their prevalence, which is how the CCP was
+  #We could instead first compute ccp_m for each of the categories,
+  #and then take a different weighted average of those, but we don't.
+
+  #left of == is n-length vector of predicted prob for observed outcome
+  #right of == is n-length max predicted prob for each obs
+  #result is an n-length logical vector
+  correct_ind <- 1*(t(pred_mat)[t(outcome_mat)==1] == apply(X=pred_mat,MARGIN = 1,FUN = max))
+  ipcw_vec <- as.vector(ipcw_mat)
+  stopifnot(length(correct_ind)==length(ipcw_vec))
+  #proportion of correct classifications, weighted by ipcw!
+  return(mean(ipcw_vec*correct_ind))
+
+  #y is the quandr-nomial response, i.e., a single vector taking three distinct values, can be nominal or numerical
+  #d is the continuous marker, turn out to be the probability matrix when option="prob"
+  #flag which subjects ended in which outcome category
+  # y <- apply(X = outcome_mat,MARGIN = 1,FUN = function(x){which(x==1)}) #generate vector of categories
+
+  #flag for each subject which category has the maximum probability
+  # pv <- max.col(pred_mat)
+  # #figure out how to handle ties in the predicted probabilities....
+  # l=max.col(pred_mat)
+  # for(i in 1:nrow(pred_mat)){
+  #   if (length(which(max(pred_mat[i,])==pred_mat[i,]))>1){
+  #     cat("WARNING: there exists two same max probability in one sample.\n")
+  #     break
+  #   }
+  # }
+  # ccp=(sum(pv==1 & y==1)+ sum(pv==2 & y==2)+sum(pv==3 & y==3)+sum(pv==4 & y==4))/nn
+  # return(ccp)
 
 }
+
+#' Compute IPCW-adjusted Net Reclassification Improvement
+#'
+#' This function computes the IPCW-adjusted Net Reclassification Probability. Presented as S in Li (2013) and Wang (2020)
+#'
+#' @inheritParams compute_score
+#' @param pred_mat1 matrix of predicted probabilities with model 1 ("old" model)
+#' @param pred_mat2 matrix of predicted probabilities with model 2 ("new" model)
+#'
+#' @return a scalar NRI
+#' @export
+compute_nri <- function(outcome_mat, pred_mat1, pred_mat2, ipcw_mat){
+
+  #for a prevalence-weighted result, theres the standard difference of ccp (this is presented in Li 2019 and mcca package)
+  # ccp_model1 <- compute_ccp(outcome_mat=outcome_mat, pred_mat=pred_mat1,ipcw_mat=ipcw_mat)
+  # ccp_model2 <- compute_ccp(outcome_mat=outcome_mat, pred_mat=pred_mat2,ipcw_mat=ipcw_mat)
+  # nri <- ccp_model2-ccp_model1
+
+  #for an equal-weighted version, need to compute ccp separately across categories
+  #left of == is n-length vector of predicted prob for observed outcome
+  #right of == is n-length max predicted prob for each obs
+  #result is an n-length logical vector
+  correct_ind1 <- 1*(t(pred_mat1)[t(outcome_mat)==1] == apply(X=pred_mat1,MARGIN = 1,FUN = max))
+  correct_ind2 <- 1*(t(pred_mat2)[t(outcome_mat)==1] == apply(X=pred_mat2,MARGIN = 1,FUN = max))
+  ipcw_vec <- as.vector(ipcw_mat)
+  stopifnot(length(correct_ind1)==length(ipcw_vec))
+  y <- apply(X = outcome_mat,MARGIN = 1,FUN = function(x){which(x==1)}) #generate vector of categories
+  ccp_vec_model1 <- tapply(X = correct_ind1*ipcw_vec,INDEX = y,FUN = mean)
+  ccp_vec_model2 <- tapply(X = correct_ind2*ipcw_vec,INDEX = y,FUN = mean)
+  nri <- mean(ccp_vec_model2-ccp_vec_model1)
+
+  return(nri)
+
+}
+
 
 #' Compute AUC for Non-terminal and Terminal outcomes
 #'
