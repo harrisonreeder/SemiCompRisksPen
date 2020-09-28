@@ -109,8 +109,27 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
   }
 
   #next, the different regions of the joint density on the upper triangle
-  # here is the generic formula if we pre-integrate t2 from u to v
-  # \int \lambda_1(t_1)\exp(-\Lambda_1(t_1)-\Lambda_2(t_1)) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
+  # here is the generic (semi-markov) formula if we pre-integrate t2 from u to v
+  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)]) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
+  # here is the generic (markov) formula if we pre-integrate t2 from u to v
+  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)-\Lambda_3(t_1)]) \left[\exp(-\Lambda_3(u)) - \exp(-\Lambda_3(v))\right] dt_1
+
+  #if we pre-integrate t2 from t1 to infinity
+  if(tolower(type) %in% c("marginal","m")){
+    f_joint_t1_neither <- function(time_pt1,index){
+      h1_const[index] * time_pt1^alpha1_m1 *
+        (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                      H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1)
+    }
+  } else{
+    f_joint_t1_neither <- function(time_pt1,index){
+      gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
+        exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
+                              H2_const[index] * time_pt1^alpha2) )
+    }
+  }
+
+
   if(tolower(model) == "semi-markov"){
 
     #if we pre-integrate t2 from t1 to t_cutoff
@@ -148,23 +167,44 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
       }
     }
 
-    #if we pre-integrate t2 from t1 to infinity
+  } else{ #MARKOV SPECIFICATIONS (if you do the derivations, amounts to changing H(t-t_1) to H(t)-H(t_1) everywhere)
+
+    #if we pre-integrate t2 from t1 to t_cutoff
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_neither <- function(time_pt1,index){
-        h1_const[index] * time_pt1^alpha1_m1 *
-                  (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                                        H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1)
-      }
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        h1_const[index] * time_pt1^alpha1_m1 * (
+          (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                        H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
+            (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                          H2_const[index] * time_pt1^alpha2 +
+                          H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))^(-theta^(-1)-1)
+        )}
     } else{
-      f_joint_t1_neither <- function(time_pt1,index){
-        gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
-                    exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
-                                          H2_const[index] * time_pt1^alpha2) )
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+          exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
+          ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))
       }
     }
 
-  } else{
-    stop("model must be 'semi-markov'")
+
+    #if we pre-integrate t2 from t_cutoff to infinity
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        h1_const[index] * time_pt1^alpha1_m1 *
+          (1 + theta * (H1_const[index] * time_pt1^alpha1 +
+                          H2_const[index] * time_pt1^alpha2 +
+                          H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))^(-theta^(-1)-1)
+      }
+    } else{
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+          exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
+                                 H2_const[index] * time_pt1^alpha2 +
+                                 H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))
+      }
+    }
+
   }
 
 
@@ -373,8 +413,25 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
     }
   }
 
-
   #next, the different regions of the joint density on the upper triangle
+
+  #this one is the same whether we assume semi-markov or markov transition
+  #if we pre-integrate t2 from t1 to infinity
+  if(tolower(type) %in% c("marginal","m")){
+    f_joint_t1_neither <- function(time_pt1,index){
+      haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+        (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                      Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1)
+    }
+  } else{
+    f_joint_t1_neither <- function(time_pt1,index){
+      gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+        exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                               Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )
+    }
+  }
+
+  #these regions differ between semimarkov and markov, with H(t-t_1) vs. H(t)-H(t_1) being the key.
   if(tolower(model) == "semi-markov"){
 
     #if we pre-integrate t2 from t1 to t_cutoff
@@ -414,23 +471,50 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
       }
     }
 
-    #if we pre-integrate t2 from t1 to infinity
+  } else{
+
+    #if we pre-integrate t2 from t1 to t_cutoff
     if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_neither <- function(time_pt1,index){
-        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-                    (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1)
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
+        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
+          (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                        Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
+            (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                          (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                            Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])
+                        ))^(-theta^(-1)-1))
       }
     } else{
-      f_joint_t1_neither <- function(time_pt1,index){
+      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
         gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )
+          exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                 Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
+          ( 1 - exp(-gamma[index] * (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                                       Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
       }
     }
 
-  } else{
-    stop("model must be 'semi-markov'")
+    #if we pre-integrate t2 from t_cutoff to infinity
+    if(tolower(type) %in% c("marginal","m")){
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+          (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                          (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                             Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])
+                        ))^(-theta^(-1)-1)
+      }
+    } else{
+      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
+        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+          exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                 Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                 (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                                    Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
+      }
+    }
+
   }
 
 
