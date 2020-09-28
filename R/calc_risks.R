@@ -4,6 +4,7 @@
 #'
 #' @inheritParams proximal_gradient_descent
 #' @param t_cutoff Numeric vector indicating the time(s) to compute the risk profile.
+#' @param t_start Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.
 #' @param tol Numeric value for the tolerance of the numerical integration procedure.
 #' @param type String either indicating 'marginal' for population-averaged probabilities,
 #'   or 'conditional' for probabilities computed at the specified gamma
@@ -15,7 +16,7 @@
 #'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
 #' @export
 calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
-                         t_cutoff, tol=1e-3, frailty=TRUE,
+                         t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
                          type="marginal", gamma=1,
                          model="semi-markov"){
   #notice reduced default tolerance
@@ -166,6 +167,27 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
     stop("model must be 'semi-markov'")
   }
 
+
+  #If we are computing 'dynamic probabilities' updated to some later timepoint t_start,
+  #then we need to compute the probability of having experienced the event by t_start.
+  #This is easier for 'neither' and 'tonly' outcomes because the inner integral does not depend on t_start.
+  if(t_start > 0){
+    p_neither_t2_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_start, upper=Inf, index=x)$value,
+                                                    error=function(cnd){return(NA)}) })
+
+    p_neither_joint_start <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_start, upper=Inf, index=x)$value,
+                                                        error=function(cnd){return(NA)}) })
+
+    p_tonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_start, index=x)$value,
+                                               error=function(cnd){return(NA)}) })
+    p_neither_start <- p_neither_t2_start + p_neither_joint_start
+  } else{
+    p_tonly_start <- 0
+    p_neither_start <- 1
+  }
+
+
+
   if(n > 1){
     if(t_length > 1){
       out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither"),paste0("i",1:n)))
@@ -177,10 +199,6 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
   }
 
   for(t_ind in 1:t_length){
-    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
-                                                          t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                error=function(cnd){return(NA)}) })
-
     p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
                                                error=function(cnd){return(NA)}) })
 
@@ -194,10 +212,28 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
                                               error=function(cnd){return(NA)}) })
 
-    out_temp <- cbind(p_ntonly=p_ntonly,
-                      p_both=p_both,
-                      p_tonly=p_tonly,
-                      p_neither=p_neither_t2 + p_neither_joint)
+    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                error=function(cnd){return(NA)}) })
+    #to compute 'dynamic probabilities' updated for a non-zero start value t_start
+    #we need to compute a second integral for the probability up to time t_start and
+    #then subtract it off. The mathematical details are written in the paper.
+    if(t_start > 0){
+      p_both_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_start,
+                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                error=function(cnd){return(NA)}) })
+
+      p_ntonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_start,
+                                                                   t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                  error=function(cnd){return(NA)}) })
+    } else{
+      p_both_start <- p_ntonly_start <- 0
+    }
+
+    out_temp <- cbind(p_ntonly=(p_ntonly-p_ntonly_start)/p_neither_start,
+                      p_both=(p_both-p_both_start)/p_neither_start,
+                      p_tonly=(p_tonly-p_tonly_start)/p_neither_start,
+                      p_neither=(p_neither_t2 + p_neither_joint)/p_neither_start)
 
     #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
     #from the other categories. However, we don't want any to be negative.
@@ -242,7 +278,7 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
 #'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
 #' @export
 calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
-                         t_cutoff, tol=1e-3, frailty=TRUE,
+                         t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
                          type="marginal", gamma=1, model="semi-markov"){
   #notice reduced default tolerance
   # browser()
@@ -398,6 +434,24 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
   }
 
 
+  #If we are computing 'dynamic probabilities' updated to some later timepoint t_start,
+  #then we need to compute the probability of having experienced the event by t_start.
+  #This is easier for 'neither' and 'tonly' outcomes because the inner integral does not depend on t_start.
+  if(t_start > 0){
+    p_neither_t2_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_start, upper=Inf, index=x)$value,
+                                                          error=function(cnd){return(NA)}) })
+
+    p_neither_joint_start <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_start, upper=Inf, index=x)$value,
+                                                              error=function(cnd){return(NA)}) })
+
+    p_tonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_start, index=x)$value,
+                                                     error=function(cnd){return(NA)}) })
+    p_neither_start <- p_neither_t2_start + p_neither_joint_start
+  } else{
+    p_tonly_start <- 0
+    p_neither_start <- 1
+  }
+
 
   if(n > 1){
     if(t_length > 1){
@@ -410,11 +464,6 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
   }
 
   for(t_ind in 1:t_length){
-
-    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
-                                                          t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                error=function(cnd){return(NA)}) })
-
     p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
                                                error=function(cnd){return(NA)}) })
 
@@ -428,11 +477,29 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
                                               error=function(cnd){return(NA)}) })
 
-    out_temp <- cbind(p_ntonly=p_ntonly,
-                      p_both=p_both,
-                      p_tonly=p_tonly,
-                      p_neither=p_neither_t2 + p_neither_joint)
+    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
+                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                error=function(cnd){return(NA)}) })
 
+    #to compute 'dynamic probabilities' updated for a non-zero start value t_start
+    #we need to compute a second integral for the probability up to time t_start and
+    #then subtract it off. The mathematical details are written in the paper.
+    if(t_start > 0){
+      p_both_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_start,
+                                                                       t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                      error=function(cnd){return(NA)}) })
+
+      p_ntonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_start,
+                                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
+                                                        error=function(cnd){return(NA)}) })
+    } else{
+      p_both_start <- p_ntonly_start <- 0
+    }
+
+    out_temp <- cbind(p_ntonly=(p_ntonly-p_ntonly_start)/p_neither_start,
+                      p_both=(p_both-p_both_start)/p_neither_start,
+                      p_tonly=(p_tonly-p_tonly_start)/p_neither_start,
+                      p_neither=(p_neither_t2 + p_neither_joint)/p_neither_start)
 
     #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
     #from the other categories. However, we don't want any to be negative.
