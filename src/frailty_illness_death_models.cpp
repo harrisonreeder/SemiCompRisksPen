@@ -111,6 +111,9 @@ double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const a
 		eta3 = X3 * para(arma::span(p01+p02+p03+1+p1+p2, p01+p02+p03+p1+p2+p3));
 	}
 
+	//you might think that all of the information about y1 and y2 is coming through the basis, but
+	//to keep the likelihood on the same scale as other parametric models, we need to include the 'extraneous'
+	//terms involving y1, y2, and y2-y1 in the final calculation
 	arma::vec logdiff = arma::log(y2-y1);
 	logdiff = logdiff.replace(-arma::datum::inf, 0); //log(y2-y1) with the negative infinity values replaced with 0's.
 
@@ -126,9 +129,6 @@ double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const a
 	//assumptions: under markov, basis 3 is coming from y_2, with placement of knots depending on quantiles of y2[delta1==1 & delta2==1]
 	arma::vec s3 = basis3 * phi3;
 	arma::vec s3prime = dbasis3 * phi3;
-
-	//if we want a markov approach, we also need extra piece, which is y_1 set at same knots of y2[delta1==1 & delta2==1]
-//	arma::vec s31 = basis31 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
 	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 

@@ -74,11 +74,14 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 #' @inheritParams proximal_gradient_descent
 #' @param deriv Boolean for whether returned values should be from derivatives of
 #'   basis functions if \code{TRUE}, or original basis functions if \code{FALSE}.
+#' @param flexsurv_compatible For Royston-Parmar basis, boolean for whether returned values should be untransformed,
+#'   as in \code{flexsurv} package, if \code{TRUE}, or whether they should be transformed to remove correlation,
+#'   as in ns package otherwise.
 #'
 #' @return A matrix with each row corresponding to an element of the input, and
 #'   each column giving the corresponding basis function value.
 #' @export
-get_basis <- function(x,knots,hazard,deriv=FALSE){
+get_basis <- function(x,knots,hazard,deriv=FALSE,flexsurv_compatible=FALSE){
 
   #the exact form of the knots passed into this function come from the above function
 
@@ -93,13 +96,21 @@ get_basis <- function(x,knots,hazard,deriv=FALSE){
     temp_log <- log(x)
     temp_log[is.infinite(temp_log)] <- NA
     if(deriv){
-#      basis_out <- dbasis(x=temp_log,knots=knots)
-      basis_out <- ns_d(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
-      basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
+      if(flexsurv_compatible){
+        basis_out <- flexsurv::dbasis(x=temp_log,knots=knots)
+        basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
+      } else{
+        basis_out <- ns_d(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
+        basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
+        }
     } else{
-#      basis_out <- basis(x = temp_log,knots = knots)
-      basis_out <- splines::ns(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
-      basis_out[is.na(basis_out)] <- 0
+      if(flexsurv_compatible){
+        basis_out <- flexsurv::basis(x = temp_log,knots = knots)
+        basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
+      } else{
+        basis_out <- splines::ns(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
+        basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
+        }
     }
   } else {return(NULL)}
 

@@ -11,6 +11,7 @@ calc_risk_PW(
   Xmat3,
   knots_list,
   t_cutoff,
+  t_start = 0,
   tol = 0.001,
   frailty = TRUE,
   type = "marginal",
@@ -34,6 +35,8 @@ then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameter
 of the piecewise specification for each transition hazard (excluding 0).}
 
 \item{t_cutoff}{Numeric vector indicating the time(s) to compute the risk profile.}
+
+\item{t_start}{Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.}
 
 \item{tol}{Numeric value for the tolerance of the numerical integration procedure.}
 

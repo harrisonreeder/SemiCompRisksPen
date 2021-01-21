@@ -36,7 +36,7 @@ proximal_gradient_descent(
   step_size_min = 1e-06,
   step_size_max = 1e+06,
   step_size_scale = 1/2,
-  ball_R = Inf,
+  ball_L2 = Inf,
   maxit = 300,
   select_tol = 1e-04,
   conv_crit = "nll_pen_change",
@@ -109,7 +109,7 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 
 \item{step_size_scale}{Positive numeric value for the multiplicative change in step size at each step of backtracking.}
 
-\item{ball_R}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
+\item{ball_L2}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
 Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.}
 
 \item{maxit}{Positive integer maximum number of iterations.}

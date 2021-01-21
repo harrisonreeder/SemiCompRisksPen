@@ -32,7 +32,7 @@ solution_path_function(
   lambda_fusedbaseline = 0,
   penweights_list,
   mu_smooth_path,
-  ball_R = Inf,
+  ball_L2 = Inf,
   fit_method,
   warm_start = TRUE,
   extra_starts = 0,
@@ -141,7 +141,7 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 
 \item{mu_smooth_path}{Numeric sequence of decreasing Nesterov smoothing parameters for the fusion penalties.}
 
-\item{ball_R}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
+\item{ball_L2}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
 Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.}
 
 \item{fit_method}{String indicating which optimization method should be used at each step.}

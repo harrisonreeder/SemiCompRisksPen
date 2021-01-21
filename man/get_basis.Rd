@@ -4,7 +4,7 @@
 \alias{get_basis}
 \title{Get Basis Function Values for Flexible Hazard Specifications}
 \usage{
-get_basis(x, knots, hazard, deriv = FALSE)
+get_basis(x, knots, hazard, deriv = FALSE, flexsurv_compatible = FALSE)
 }
 \arguments{
 \item{x}{Numeric vector of event times (e.g., \code{y1} or \code{y2}) at which
@@ -18,6 +18,10 @@ list generated from \code{\link{get_default_knots_list}}.}
 
 \item{deriv}{Boolean for whether returned values should be from derivatives of
 basis functions if \code{TRUE}, or original basis functions if \code{FALSE}.}
+
+\item{flexsurv_compatible}{For Royston-Parmar basis, boolean for whether returned values should be untransformed,
+as in \code{flexsurv} package, if \code{TRUE}, or whether they should be transformed to remove correlation,
+as in ns package otherwise.}
 }
 \value{
 A matrix with each row corresponding to an element of the input, and

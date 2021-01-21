@@ -17,7 +17,7 @@ lasso_prox_internal <- function(beta,lambda,step_size,penweights){
 prox_func <- function(para, prev_para, nP1, nP2, nP3, step_size,
                       penalty, lambda, penweights_list,
                       pen_mat_w,pen_mat_w_eig=NULL,lambda_f_vec,
-                      mu_smooth_fused, ball_R=Inf){
+                      mu_smooth_fused, ball_L2=Inf){
 
   #perform proximal operator based on convex part of penalty term (following Yao (2018))
 
@@ -69,10 +69,10 @@ prox_func <- function(para, prev_para, nP1, nP2, nP3, step_size,
 
   #now, add projection of the covariates onto the ball of radius R to potentially accommodate the constraints of Wang (2014)
   #this is equivalent to ridge regression
-  if(nP1 + nP2 + nP3 > 0 && !is.null(ball_R) && !is.infinite(ball_R)){
+  if(nP1 + nP2 + nP3 > 0 && !is.null(ball_L2) && !is.infinite(ball_L2)){
     temp_norm2 <- sum(prox_out[(1+nP0):(nP0+nP1+nP2+nP3)]^2)
-    if(temp_norm2 > ball_R){
-      prox_out[(1+nP0):(nP0+nP1+nP2+nP3)] <- prox_out[(1+nP0):(nP0+nP1+nP2+nP3)] * ball_R / temp_norm2
+    if(temp_norm2 > ball_L2){
+      prox_out[(1+nP0):(nP0+nP1+nP2+nP3)] <- prox_out[(1+nP0):(nP0+nP1+nP2+nP3)] * ball_L2 / temp_norm2
     }
   }
 

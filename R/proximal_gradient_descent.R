@@ -45,7 +45,7 @@
 #' @param step_size_min Positive numeric value for the minimum allowable step size to allow during backtracking.
 #' @param step_size_max Positive numeric value for the maximum allowable step size to allow by size increase at each iteration.
 #' @param step_size_scale Positive numeric value for the multiplicative change in step size at each step of backtracking.
-#' @param ball_R Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
+#' @param ball_L2 Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
 #'   Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.
 #' @param maxit Positive integer maximum number of iterations.
 #' @param conv_crit String (possibly vector) giving the convergence criterion.
@@ -68,7 +68,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                       penalty_fusedbaseline, lambda_fusedbaseline,
                                       penweights_list, mu_smooth_fused,
                                       step_size_init=1, step_size_min = 1e-6, step_size_max = 1e6,
-                                      step_size_scale=1/2, ball_R=Inf, maxit=300, select_tol = 1e-4,
+                                      step_size_scale=1/2, ball_L2=Inf, maxit=300, select_tol = 1e-4,
                                       conv_crit = "nll_pen_change", conv_tol=if(lambda>0) lambda/4 else 1e-6,
                                       verbose){
 
@@ -210,7 +210,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                        penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                        pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                        lambda_f_vec=lambda_f_vec,
-                       mu_smooth_fused=mu_smooth_fused, ball_R=ball_R)
+                       mu_smooth_fused=mu_smooth_fused, ball_L2=ball_L2)
 
     #note the division by n to put it on the mean scale--gradient descent works better then!
     nll_pen_xnext <- nll_pen_func(para=xnext,
@@ -254,7 +254,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                          penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                          pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                          lambda_f_vec=lambda_f_vec,
-                         mu_smooth_fused=mu_smooth_fused, ball_R=ball_R)
+                         mu_smooth_fused=mu_smooth_fused, ball_L2=ball_L2)
 
       #note the division by n to put it on the mean scale--gradient descent works better then!
       nll_pen_xnext <- nll_pen_func(para=xnext,
@@ -322,7 +322,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                  penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                  pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                  lambda_f_vec=lambda_f_vec,
-                                 mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
+                                 mu_smooth_fused = mu_smooth_fused, ball_L2=ball_L2)))
 
     est_change_max <- max(abs(xcurr-xprev))
     est_change_2norm <- sqrt(sum((xcurr-xprev)^2))
@@ -422,7 +422,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                                pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                lambda_f_vec=lambda_f_vec,
                                mu_smooth_fused = mu_smooth_fused,
-                               ball_R=ball_R)
+                               ball_L2=ball_L2)
   ##Return list of final objects##
   ##****************************##
 
@@ -444,7 +444,7 @@ proximal_gradient_descent <- function(para, y1, y2, delta1, delta2,
                            conv_tol=conv_tol,
                            maxit=maxit),
               conv_stats=c(est_change_max=est_change_max,est_change_2norm=est_change_2norm,nll_pen_change=nll_pen_change,subopt=subopt_t),
-              ball_R=ball_R,
+              ball_L2=ball_L2,
               final_step_size=step_size_ti,
               bad_step_count=bad_step_count))
 }

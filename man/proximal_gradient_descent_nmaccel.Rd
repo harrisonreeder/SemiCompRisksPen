@@ -39,7 +39,7 @@ proximal_gradient_descent_nmaccel(
   select_tol = 1e-04,
   step_size_scale = 0.5,
   step_delta = 0.5,
-  ball_R = Inf,
+  ball_L2 = Inf,
   maxit = 300,
   conv_crit = "nll_pen_change",
   conv_tol = 1e-06,
@@ -149,7 +149,7 @@ names "coef1", "coef2", "coef3", "fusedcoef12", "fusedcoef13", "fusedcoef23", "f
 
 \item{step_delta}{Positive numeric value for the parameter governing sufficient descent criterion.}
 
-\item{ball_R}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
+\item{ball_L2}{Positive numeric value for \eqn{l_2} ball constraint around the origin for the regression parameters.
 Typically set to \code{Inf} indicating no constraint, otherwise equivalent to an extra \eqn{l_2} penalty.}
 
 \item{maxit}{Positive integer maximum number of iterations.}

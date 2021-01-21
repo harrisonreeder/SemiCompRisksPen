@@ -10,6 +10,7 @@ calc_risk_WB(
   Xmat2,
   Xmat3,
   t_cutoff,
+  t_start = 0,
   tol = 0.001,
   frailty = TRUE,
   type = "marginal",
@@ -30,6 +31,8 @@ then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameter
 \item{Xmat3}{Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.}
 
 \item{t_cutoff}{Numeric vector indicating the time(s) to compute the risk profile.}
+
+\item{t_start}{Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.}
 
 \item{tol}{Numeric value for the tolerance of the numerical integration procedure.}
 

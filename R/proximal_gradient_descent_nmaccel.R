@@ -23,7 +23,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                               step_size_min=1e-6, step_size_max=1e6,
                                               step_size_init_x=1,step_size_init_y=1, select_tol = 1e-4,
                                               step_size_scale=0.5, #no checks implemented on these values!!
-                                              step_delta=0.5,ball_R=Inf, maxit=300,
+                                              step_delta=0.5,ball_L2=Inf, maxit=300,
                                               conv_crit = "nll_pen_change",
                                               conv_tol=1e-6,
                                               verbose){
@@ -197,7 +197,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
     znext <- prox_func(para=ycurr-step_size_y*ngrad_ycurr, prev_para = ycurr,
                        nP1=nP1,nP2=nP2,nP3=nP3,step_size=step_size_y,
                        penalty=penalty,lambda=lambda, penweights_list=penweights_list,
-                       pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_R=ball_R,
+                       pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_L2=ball_L2,
                        lambda_f_vec=lambda_f_vec, mu_smooth_fused=mu_smooth_fused)
 
     #note the division by n to put it on the mean scale--gradient descent works better then!
@@ -252,7 +252,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
       znext <- prox_func(para=ycurr-step_size_y*ngrad_ycurr, prev_para=ycurr,
                          nP1=nP1,nP2=nP2,nP3=nP3,step_size=step_size_y,
                          penalty=penalty,lambda=lambda, penweights_list=penweights_list,
-                         pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_R=ball_R,
+                         pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_L2=ball_L2,
                          lambda_f_vec=lambda_f_vec, mu_smooth_fused=mu_smooth_fused)
 
       #note the division by n to put it on the mean scale--gradient descent works better then!
@@ -311,7 +311,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
       vnext <- prox_func(para=xcurr-step_size_x*ngrad_xcurr, prev_para=xcurr,
                          nP1=nP1,nP2=nP2,nP3=nP3,step_size=step_size_x,
                          penalty=penalty,lambda=lambda, penweights_list=penweights_list,
-                         pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_R=ball_R,
+                         pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig, ball_L2=ball_L2,
                          lambda_f_vec=lambda_f_vec, mu_smooth_fused=mu_smooth_fused)
 
       #note the division by n to put it on the mean scale--gradient descent works better then!
@@ -348,7 +348,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
         vnext <- prox_func(para=xcurr-step_size_x*ngrad_xcurr, prev_para = xcurr,
                            nP1=nP1,nP2=nP2,nP3=nP3,step_size=step_size_x,
                            penalty=penalty,lambda=lambda, penweights_list=penweights_list,
-                           pen_mat_w=pen_mat_w, pen_mat_w_eig=pen_mat_w_eig, ball_R=ball_R,
+                           pen_mat_w=pen_mat_w, pen_mat_w_eig=pen_mat_w_eig, ball_L2=ball_L2,
                            lambda_f_vec=lambda_f_vec, mu_smooth_fused=mu_smooth_fused)
 
         #note the division by n to put it on the mean scale--gradient descent works better then!
@@ -458,7 +458,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                    penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                    pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                    lambda_f_vec=lambda_f_vec,
-                                   mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
+                                   mu_smooth_fused = mu_smooth_fused, ball_L2=ball_L2)))
       if(verbose){print(paste("suboptimality (max norm of prox grad)", subopt_t))}
       if(subopt_t < conv_tol){
         fit_code <- 2
@@ -518,7 +518,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                 penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                 pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                 lambda_f_vec=lambda_f_vec,
-                                mu_smooth_fused = mu_smooth_fused, ball_R=ball_R)))
+                                mu_smooth_fused = mu_smooth_fused, ball_L2=ball_L2)))
 
 
   finalVals <- as.numeric(xnext)
@@ -562,7 +562,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                                penalty=penalty,lambda=lambda, penweights_list=penweights_list,
                                pen_mat_w=pen_mat_w,pen_mat_w_eig=pen_mat_w_eig,
                                lambda_f_vec=lambda_f_vec, mu_smooth_fused = mu_smooth_fused,
-                               ball_R=ball_R)
+                               ball_L2=ball_L2)
 
 
 
@@ -589,7 +589,7 @@ proximal_gradient_descent_nmaccel <- function(para, y1, y2, delta1, delta2,
                            conv_crit=conv_crit,conv_tol=conv_tol,
                            maxit=maxit),
               conv_stats=c(est_change_max=est_change_max,est_change_2norm=est_change_2norm,nll_pen_change=nll_pen_change,subopt=subopt_t),
-              ball_R=ball_R,
+              ball_L2=ball_L2,
               final_step_size=step_size_x,
               final_step_size_x=step_size_x,
               final_step_size_y=step_size_y,

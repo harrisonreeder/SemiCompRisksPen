@@ -6,7 +6,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                               penalty_fusedcoef=c("none","fusedlasso"), lambda_fusedcoef_path=0,
                               penalty_fusedbaseline=c("none","fusedlasso"), lambda_fusedbaseline=0,
                               penweights_list=list(), mu_smooth_path=0, fit_method="prox_grad",
-                              startVals=NULL, ball_R=Inf,
+                              startVals=NULL, ball_L2=Inf,
                               warm_start=TRUE, step_size_min=1e-6, step_size_max=1e6, step_size_init=1,
                               step_size_scale=0.5, #no checks implemented on these values!!
                               step_delta=0.5, maxit=300,
@@ -150,7 +150,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                                               penalty=penalty, lambda_path=lambda_path, a=a,
                                               penalty_fusedcoef=penalty_fusedcoef, lambda_fusedcoef_path=lambda_fusedcoef_path,
                                               penalty_fusedbaseline="none", lambda_fusedbaseline=0, #idk what to do about the baseline fusing, for now I skip
-                                              penweights_list=penweights_list, mu_smooth_path=mu_smooth_path, ball_R=ball_R,
+                                              penweights_list=penweights_list, mu_smooth_path=mu_smooth_path, ball_L2=ball_L2,
                                               fit_method=fit_method, warm_start=warm_start,
                                               step_size_min=step_size_min, step_size_max=step_size_max, step_size_init=step_size_init,
                                               step_size_scale=step_size_scale, #no checks implemented on these values!!

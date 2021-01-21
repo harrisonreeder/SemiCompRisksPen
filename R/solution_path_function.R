@@ -35,7 +35,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                    penalty, lambda_path, a,
                                    penalty_fusedcoef, lambda_fusedcoef_path,
                                    penalty_fusedbaseline="none", lambda_fusedbaseline=0, #idk what to do about the baseline fusing, for now I skip
-                                   penweights_list, mu_smooth_path, ball_R=Inf,
+                                   penweights_list, mu_smooth_path, ball_L2=Inf,
                                    fit_method, warm_start=TRUE, extra_starts=0,
                                    select_tol=1e-4, fusion_tol = 1e-3,
                                    step_size_min=1e-6, step_size_max=1e6,
@@ -106,7 +106,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                      ncol=ncol(lambda_path) + ncol(lambda_fusedcoef_path) + ncol(mu_smooth_path) + 1,
                      dimnames=list(NULL,c(colnames(lambda_path),
                                           colnames(lambda_fusedcoef_path),
-                                          colnames(mu_smooth_path),"ball_R")))
+                                          colnames(mu_smooth_path),"ball_L2")))
   out_control <- matrix(nrow=total_length,
                         ncol=4,dimnames=list(NULL,c("niter","fit_code","final_step_size","best_start_iter")))
 
@@ -190,7 +190,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                  step_size_min=step_size_min,step_size_max=step_size_max,
                                                  step_size_scale=step_size_scale, select_tol=select_tol,
                                                  maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                                 ball_R=Inf, verbose=verbose)
+                                                 ball_L2=ball_L2, verbose=verbose)
           }
           if(fit_method=="prox_grad_nmaccel"){
             tempfit <- proximal_gradient_descent_nmaccel(para=startVals_innermost, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
@@ -207,7 +207,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
                                                          step_size_min=step_size_min,step_size_max=step_size_max,
                                                          step_size_scale=step_size_scale, select_tol = select_tol,
                                                          maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                                         ball_R=Inf, verbose=verbose)
+                                                         ball_L2=ball_L2, verbose=verbose)
           }
           if(fit_method=="newton"){
             tempfit <- newton_raphson_mm(para=startVals_innermost, y1=y1, y2=y2, delta1=delta1, delta2=delta2,
@@ -319,7 +319,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
             df_est <- tempaic_estdf <- tempbic_estdf <- tempgcv_estdf <- NA
           }
 
-          out_info[iter,] <- c(lambda,lambda_fusedcoef, mu_smooth_fused, ball_R)
+          out_info[iter,] <- c(lambda,lambda_fusedcoef, mu_smooth_fused, ball_L2)
           out_ests[iter,] <- tempfit$estimate
           out_pen_ngrads[iter,] <- as.vector(tempfit$final_ngrad_pen)
           out_ics[iter,] <- c(tempfit$final_nll, tempfit$final_nll_pen,

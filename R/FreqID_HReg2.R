@@ -4,12 +4,14 @@
 #' @param hessian Boolean indicating whether the hessian (aka, the inverse covariance matrix)
 #'   should be computed and returned.
 #' @param control a list of control attributes passed directly into the \code{optim} function.
+#' @param optim_method a string naming which \code{optim} method should be used.
 #'
 #' @return A list.
 #' @export
 FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                         hazard=c("weibull"),frailty=TRUE, model, knots_list = NULL,
-                        startVals=NULL, hessian=TRUE, control=NULL){
+                        startVals=NULL, hessian=TRUE, control=NULL,
+                        optim_method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS-B"){
 
   ####WRAPPER FUNCTION FOR REGULARIZED ESTIMATION####
   ##***********************************************##
@@ -100,19 +102,31 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
 
   ##GET MLE##
   ##*******##
-
-  fit0 <- stats::optim(par = startVals, fn = nll_func, gr = ngrad_func,
+  fit0 <- tryCatch(stats::optim(par = startVals, fn = nll_func, gr = ngrad_func,
                               y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                               Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                               hazard=hazard,frailty=frailty,model=model,
                               basis1 = basis1, basis2 = basis2, basis3 = basis3, basis3_y1 = basis3_y1,
                               dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
                               control=con, hessian=hessian,
-                              # method = "BFGS")
-                              method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS-B")
+                              method = optim_method),
+                   error=function(cnd){
+                     message(cnd)
+                     cat("\n")
+                     return(list(fail=TRUE,hazard=hazard,frailty=frailty,model=model,
+                                 startVals=startVals,knots_list=knots_list,
+                                 basis1=basis1,basis2=basis2,basis3=basis3,
+                                 dbasis1=dbasis1,dbasis2=dbasis2,dbasis3=dbasis3,
+                                 control=control))
+                     })
+
+  if(!is.null(fit0$fail)){
+    return(fit0)
+    }
 
   if (fit0$convergence == 0 | fit0$convergence == 1) {
     myLabels <- names(startVals)
+    myLabels <- gsub(pattern = "_1|_2|_3",replacement = "",x = myLabels)
     # myLabels <- c("log(kappa1)", "log(alpha1)", "log(kappa2)",
     #               "log(alpha2)", "log(kappa3)", "log(alpha3)")
     # if (frailty == TRUE)
@@ -126,7 +140,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                   knots_list=knots_list,
                   myLabels = myLabels,
                   frailty = frailty,
-                  optim_details = list(counts=fit0$counts,convergence=fit0$convergence,message=fit0$message),
+                  optim_details = list(counts=fit0$counts,convergence=fit0$convergence,message=fit0$message,startVals=startVals),
                   nP = nP)#, Xmat = list(Xmat1, Xmat2, Xmat3))
     value$class <- c("Freq_HReg",
                      "ID",

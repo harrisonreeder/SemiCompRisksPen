@@ -190,7 +190,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                                            penweights_list=penweights_list, mu_smooth_fused=0,
                                            step_size_init=step_size_init,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                            maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                           ball_R=Inf, verbose=verbose)
+                                           ball_L2=Inf, verbose=verbose)
     if(verbose){print(optim_out$final_nll_pen)}
     if(optim_out$final_nll_pen < final_nll_pen){
       fit_method <- "prox_grad"
@@ -219,7 +219,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                                            penweights_list=penweights_list, mu_smooth_fused=0,
                                            step_size_init=step_size_init,step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                            maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                           ball_R=Inf, verbose=verbose)
+                                           ball_L2=Inf, verbose=verbose)
     if(verbose){print(optim_out$final_nll_pen)}
     if(optim_out$final_nll_pen < final_nll_pen){
       fit_method <- "prox_grad_mle"
@@ -250,7 +250,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                                                    step_size_init_x=step_size_init,step_size_init_y=step_size_init,
                                                    step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                                    maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                                   ball_R=Inf, verbose=verbose)
+                                                   ball_L2=Inf, verbose=verbose)
     if(verbose){print(optim_out$final_nll_pen)}
     if(optim_out$final_nll_pen < final_nll_pen){
       fit_method <- "prox_grad_nmaccel"
@@ -280,7 +280,7 @@ FreqID_HReg_R <- function(Formula, data, na.action="na.fail", subset=NULL,
                                                    step_size_init_x=step_size_init,step_size_init_y=step_size_init,
                                                    step_size_min=step_size_min,step_size_max=step_size_max,step_size_scale=step_size_scale,
                                                    maxit=maxit, conv_crit=conv_crit, conv_tol=conv_tol,
-                                                   ball_R=Inf, verbose=verbose)
+                                                   ball_L2=Inf, verbose=verbose)
     if(verbose){print(optim_out$final_nll_pen)}
     if(optim_out$final_nll_pen < final_nll_pen){
       fit_method <- "prox_grad_nmaccel_mle"

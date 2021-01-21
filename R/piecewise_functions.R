@@ -244,7 +244,7 @@ ngradPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
   Lambda02 <- basis2 %*% exp(phi2)
   Lambda03 <- basis3 %*% exp(phi3)
 
-  #code to multiply each row of Lambda0g elementwise by the vector exp(phig)
+  #code to multiply each row of basis matrix elementwise by the vector exp(phig)
   #this gives us exactly what we want for Lambda0gPhi (faster version of 'sweep')
   #https://stackoverflow.com/questions/49462591/r-multiply-every-row-of-df-or-matrix-with-a-vector/49462658
 
