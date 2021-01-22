@@ -114,7 +114,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
   bad_step_count <- restart_count <- 0
   i <- 1
   while(i <= maxit){
-    if(verbose)print(i)
+    if(verbose >= 2)print(i)
     lr <- 1
 
     Ek <- pen_maj_mat_func(para=finalVals,nP1=nP1,nP2=nP2,nP3=nP3,penalty=penalty,lambda=lambda, a=a,
@@ -261,7 +261,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
     #because current regularized value is also the point of majorization and majorized function is tangent to regularized function at current point
     #arguably, this could look just at regularized nll rather than majorized...because majorized has a tendency to be so pointy in some dimensions and leaves little wiggle room.
     while(lr > step_size_min & next_nll_maj > curr_nll_pen){
-      if(verbose)print(lr)
+      if(verbose >= 4)print(lr)
       lr <- lr/2
       # browser()
 
@@ -340,7 +340,7 @@ newton_raphson_mm <- function(para, y1, y2, delta1, delta2, Xmat1, Xmat2, Xmat3,
     # prev_grad_mean_norm <- n^(-1)*sum(abs(temp_ngrad + n*Ek %*% prevVals))
     subopt_t <- n^(-1)*max(abs(temp_ngrad + n*Ek %*% prevVals))
 
-    if(verbose){
+    if(verbose >= 3){
       print(paste("max change in ests",est_change_max))
       print(paste("estimate with max change",names(para)[abs(finalVals-prevVals) == est_change_max]))
       print(paste("l2 norm of estimate change",est_change_2norm))
