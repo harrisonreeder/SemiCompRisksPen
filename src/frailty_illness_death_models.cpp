@@ -126,7 +126,6 @@ double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const a
 	arma::vec s2 = basis2 * phi2;
 	arma::vec s2prime = dbasis2 * phi2;
 	//assumptions: under semi-markov basis 3 is coming from y_2-y1, with placement of knots depending on quantiles of (y2-y1)[delta1==1 & delta2==1]
-	//assumptions: under markov, basis 3 is coming from y_2, with placement of knots depending on quantiles of y2[delta1==1 & delta2==1]
 	arma::vec s3 = basis3 * phi3;
 	arma::vec s3prime = dbasis3 * phi3;
 
@@ -187,7 +186,6 @@ double nlogLikRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const ar
 	//assumptions: basis 2 is coming from y_1, with placement of knots depending on quantiles of y[delta1==0 & delta2==0]
 	arma::vec s2 = basis2 * phi2;
 	arma::vec s2prime = dbasis2 * phi2;
-	//assumptions: under semi-markov basis 3 is coming from y_2-y1, with placement of knots depending on quantiles of (y2-y1)[delta1==1 & delta2==1]
 	//assumptions: under markov, basis 3 is coming from y_2, with placement of knots depending on quantiles of y2[delta1==1 & delta2==1]
 	arma::vec s3 = basis3 * phi3;
 	arma::vec s3prime = dbasis3 * phi3;
@@ -199,7 +197,7 @@ double nlogLikRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const ar
 	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
 	arma::vec AVec;
-	AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % arma::exp(s3 - s3_y1 + eta3);
+	AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % (arma::exp(s3 + eta3) - arma::exp(s3_y1 + eta3));
 
 
 	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1) ) 
@@ -252,12 +250,8 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 	arma::vec s2 = basis2 * phi2;
 	arma::vec s2prime = dbasis2 * phi2;
 	//assumptions: under semi-markov basis 3 is coming from y_2-y1, with placement of knots depending on quantiles of (y2-y1)[delta1==1 & delta2==1]
-	//assumptions: under markov, basis 3 is coming from y_2, with placement of knots depending on quantiles of y2[delta1==1 & delta2==1]
 	arma::vec s3 = basis3 * phi3;
 	arma::vec s3prime = dbasis3 * phi3;
-
-	//if we want a markov approach, we also need extra piece, which is y_1 set at same knots of y2[delta1==1 & delta2==1]
-//	arma::vec s31 = basis31 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
 	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
@@ -268,16 +262,21 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 
 	arma::vec commonVec = getCommonVec(delta1, delta2, AVec, h);
 
+
+	//phi1
 	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1)) 
 											+ basis1.t() * (delta1 - commonVec % arma::exp(h + s1 + eta1) );
 
+	//phi2
 	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1)) 
 													+ basis2.t() * ((1-delta1) % delta2 - commonVec % arma::exp(h + s2 + eta2) );
 
+	//phi3
 	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime,-1)) 
 													+ basis3.t() * (delta1 % delta2 - 
 														delta1 % commonVec % arma::exp(h + s3 + eta3) );  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2-y1). Helps make it more robust
 
+	//h
 	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
 
 	//beta1 (what ina calls u2)
@@ -343,7 +342,6 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 	//assumptions: basis 2 is coming from y_1, with placement of knots depending on quantiles of y[delta1==0 & delta2==0]
 	arma::vec s2 = basis2 * phi2;
 	arma::vec s2prime = dbasis2 * phi2;
-	//assumptions: under semi-markov basis 3 is coming from y_2-y1, with placement of knots depending on quantiles of (y2-y1)[delta1==1 & delta2==1]
 	//assumptions: under markov, basis 3 is coming from y_2, with placement of knots depending on quantiles of y2[delta1==1 & delta2==1]
 	arma::vec s3 = basis3 * phi3;
 	arma::vec s3prime = dbasis3 * phi3;
@@ -354,22 +352,28 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
 	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
-	arma::vec AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % arma::exp(s3 - s3_y1 + eta3);
+	arma::vec AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % (arma::exp(s3 + eta3) - arma::exp(s3_y1 + eta3));
 
   	arma::vec temp_scorevec = arma::zeros<arma::vec>(1 + p01 + p02 + p03 + p1 + p2 + p3);
 
 	arma::vec commonVec = getCommonVec(delta1, delta2, AVec, h);
 
+	//phi1
 	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1)) 
 											+ basis1.t() * (delta1 - commonVec % arma::exp(h + s1 + eta1) );
 
+	//phi2
 	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1)) 
 													+ basis2.t() * ((1-delta1) % delta2 - commonVec % arma::exp(h + s2 + eta2) );
 
+	//phi3
 	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime, -1)) 
-													+ (basis3).t() * (delta1 % delta2) 
-													- (basis3 - basis3_y1).t() * (delta1 % commonVec % arma::exp(h + s3 - s3_y1 + eta3) );  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
+													+ basis3.t() * (delta1 % delta2) 
+													- (basis3.t() * (delta1 % commonVec % arma::exp(h + s3 + eta3))
+													   - basis3_y1.t() * (delta1 % commonVec % arma::exp(h + s3_y1 + eta3)));  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
 
+
+	//h
 	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
 
 	//beta1 (what ina calls u2)
@@ -385,7 +389,7 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 	//beta3 (what ina calls u4)
 	if(p3 > 0){
 		temp_scorevec(arma::span(1 + p01 + p02 + p03 + p1 + p2,1 + p01 + p02 + p03 + p1 + p2 + p3 - 1)) = X3.t() * (delta1 % delta2 - 
-								 delta1 % commonVec % arma::exp(s3 - s3_y1 + h + eta3)); //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
+								 delta1 % commonVec % arma::exp(h + eta3) % (arma::exp(s3) - arma::exp(s3_y1))); //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
 	}
 
     return -temp_scorevec;

@@ -1,15 +1,19 @@
 #' Fit Parametric Frailty Illness-Death Model for Semi-Competing Risks Data
 #'
 #' @inheritParams FreqID_HReg_R
-#' @param hessian Boolean indicating whether the hessian (aka, the inverse covariance matrix)
+#' @param p0_vec vector of length three of integers indicating how many baseline hazard parameters
+#'   should be specified for each of the three transition hazards. This input is only relevant when
+#'   hazard is something other than "weibull" and is superceded by knots_list.
+#' @param hessian Boolean indicating whether the hessian (aka, the inverse of the covariance matrix)
 #'   should be computed and returned.
 #' @param control a list of control attributes passed directly into the \code{optim} function.
 #' @param optim_method a string naming which \code{optim} method should be used.
 #'
-#' @return A list.
+#' @return \code{FreqID_HReg2} returns an object of class \code{Freq_HReg}.
 #' @export
 FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                         hazard=c("weibull"),frailty=TRUE, model, knots_list = NULL,
+                        p0_vec = rep(4,3),
                         startVals=NULL, hessian=TRUE, control=NULL,
                         optim_method = if(tolower(hazard) %in% c("royston-parmar","rp")) "BFGS" else "L-BFGS-B"){
 
@@ -68,7 +72,10 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
 
   if(tolower(hazard) %in% c("bspline","royston-parmar","piecewise","pw","rp","bs")){
     if(is.null(knots_list)){
-      p01 <- p02 <- p03 <- if(tolower(hazard) %in% c("bspline","bs")) 5 else 3
+      if(length(p0_vec) != 3){stop("If hazard not equal to 'weibull' and knots_list set to NULL, then p0_vec must be vector of 3 integers.")}
+      p01 <- p0_vec[1]
+      p02 <- p0_vec[2]
+      p03 <- p0_vec[3]
       knots_list <- get_default_knots_list(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     }
     basis1 <- get_basis(x = y1,knots = knots_list[[1]],hazard = hazard)
@@ -107,7 +114,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                               Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                               hazard=hazard,frailty=frailty,model=model,
                               basis1 = basis1, basis2 = basis2, basis3 = basis3, basis3_y1 = basis3_y1,
-                              dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = basis3,
+                              dbasis1 = dbasis1, dbasis2 = dbasis2, dbasis3 = dbasis3,
                               control=con, hessian=hessian,
                               method = optim_method),
                    error=function(cnd){

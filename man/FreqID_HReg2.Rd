@@ -13,6 +13,7 @@ FreqID_HReg2(
   frailty = TRUE,
   model,
   knots_list = NULL,
+  p0_vec = rep(4, 3),
   startVals = NULL,
   hessian = TRUE,
   control = NULL,
@@ -22,18 +23,16 @@ FreqID_HReg2(
 }
 \arguments{
 \item{Formula}{a Formula object, with the outcome on the left of a
-~, and covariates on the right. It is of the form, time to non-terminal
-event + corresponding censoring indicator | time to terminal event
-\itemize{
-\item corresponding censoring indicator ~ covariates for h_1 |
-covariates for h_2 | covariates for h_3: i.e., y_1 + delta_1 | y_2 + delta_2 ~ x_1 | x_2 | x_3.
-}}
+\code{~}, and covariates on the right. It is of the form, \code{time to non-terminal
+  event + corresponding censoring indicator | time to terminal event
+  + corresponding censoring indicator ~ covariates for h_1 |
+  covariates for h_2 | covariates for h_3}. For example, \code{y_1 + delta_1 | y_2 + delta_2 ~ x_1 | x_2 | x_3}.}
 
-\item{data}{a data.frame in which to interpret the variables named in Formula.}
+\item{data}{a \code{data.frame} in which to interpret the variables named in Formula.}
 
-\item{na.action}{how NAs are treated. See model.frame.}
+\item{na.action}{how NAs are treated. See \code{\link[stats]{model.frame}}.}
 
-\item{subset}{a specification of the rows to be used: defaults to all rows. See model.frame.}
+\item{subset}{a specification of the rows to be used: defaults to all rows. See \code{\link[stats]{model.frame}}.}
 
 \item{hazard}{String specifying the form of the baseline hazard.}
 
@@ -45,15 +44,19 @@ be included. Currently this must be set to TRUE.}
 \item{knots_list}{Used for hazard specifications besides Weibull, a
 list of three increasing sequences of integers, each corresponding to
 the knots for the flexible model on the corresponding transition baseline hazard. If
-\code{NULL}, will be created by \code{get_default_knots_list}.}
+\code{NULL}, will be created by \code{\link{get_default_knots_list}}.}
+
+\item{p0_vec}{vector of length three of integers indicating how many baseline hazard parameters
+should be specified for each of the three transition hazards. This input is only relevant when
+hazard is something other than "weibull" and is superceded by knots_list.}
 
 \item{startVals}{A numeric vector of parameter starting values, arranged as follows:
 the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameters,
 then the \eqn{k_1+k_2+k_3+1} element corresponds to the gamma frailty log-variance parameter,
 then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameters.
-If set to \code{NULL}, will be generated automatically using \code{get_start}.}
+If set to \code{NULL}, will be generated automatically using \code{\link{get_start}}.}
 
-\item{hessian}{Boolean indicating whether the hessian (aka, the inverse covariance matrix)
+\item{hessian}{Boolean indicating whether the hessian (aka, the inverse of the covariance matrix)
 should be computed and returned.}
 
 \item{control}{a list of control attributes passed directly into the \code{optim} function.}
@@ -61,7 +64,7 @@ should be computed and returned.}
 \item{optim_method}{a string naming which \code{optim} method should be used.}
 }
 \value{
-A list.
+\code{FreqID_HReg2} returns an object of class \code{Freq_HReg}.
 }
 \description{
 Fit Parametric Frailty Illness-Death Model for Semi-Competing Risks Data
