@@ -219,3 +219,44 @@ pen_concave_part_prime_func <- function(para,nP1,nP2,nP3,
   # names(grad_part) <- names(para)
   return(grad_part)
 }
+
+
+
+
+####CHECKING FUNCTIONS####
+
+
+#function to check that penalty parameters meet basic sanity checks
+check_pen_params <- function(penalty,penalty_fusedcoef,penalty_fusedbaseline,
+                             lambda,lambda_fusedcoef,lambda_fusedbaseline,
+                             a){
+  if(!(penalty %in% c("scad","mcp","adalasso","lasso"))){
+    stop("penalty must be either 'scad', 'mcp', 'adalasso', 'lasso'")
+  }
+  if(!(penalty_fusedcoef %in% c("none","fusedlasso","adafusedlasso"))){
+    stop("penalty_fusedcoef must be 'none', 'fusedlasso' or 'adafusedlasso'")
+  }
+  if(!(penalty_fusedbaseline %in% c("none","fusedlasso","adafusedlasso"))){
+    stop("penalty_fusedbaseline must be 'none', 'fusedlasso' or 'adafusedlasso'")
+  }
+
+  if (a <= 0)
+    stop("a must be greater than 0")
+  if (a <= 1 & penalty == "mcp")
+    stop("a must be greater than 1 for the MC penalty")
+  if (a <= 2 & penalty == "scad")
+    stop("a must be greater than 2 for the SCAD penalty")
+
+  if (any(lambda < 0)){
+    stop("lambda must be non-negative")
+  }
+  if (any(lambda_fusedcoef < 0)){
+    stop("lambda must be non-negative")
+  }
+  if (any(lambda_fusedbaseline < 0)){
+    stop("lambda must be non-negative")
+  }
+
+  invisible(penalty) #it's best practice to invisibly return first argument, according to hadley wickham
+}
+
