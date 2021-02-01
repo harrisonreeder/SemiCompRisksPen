@@ -50,17 +50,19 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
     }
 
   } else if(tolower(hazard) %in% c("royston-parmar","rp")){
+    #in rp model, boundary knots are set directly at endpoints, so no need to fix at 0
+    quantile_seq1 <- seq(from = 0,to = 1, length.out = p01)
+    quantile_seq2 <- seq(from = 0,to = 1, length.out = p02)
+    quantile_seq3 <- seq(from = 0,to = 1, length.out = p03)
 
-    quantile_seq1 <- seq(from = 0.05,to = 0.95, length.out = p01)[-c(1,p01)]
-    quantile_seq2 <- seq(from = 0.05,to = 0.95, length.out = p02)[-c(1,p02)]
-    quantile_seq3 <- seq(from = 0.05,to = 0.95, length.out = p03)[-c(1,p03)]
-
-    knots1 <- c(0,stats::quantile(log(y1)[delta1==1],quantile_seq1),max(log(y1)))
-    knots2 <- c(0,stats::quantile(log(y1)[(1-delta1)*delta2==1],quantile_seq2),max(log(y1)))
+    #rp model puts splines on log scale, but let's specify knots on original scale and
+    #transform them in the get_basis function (makes the knots themselves more interpretable and consistent)
+    knots1 <- stats::quantile(y1[delta1==1],quantile_seq1)
+    knots2 <- stats::quantile(y1[(1-delta1)*delta2==1],quantile_seq2)
     if(tolower(model)=="semi-markov"){
-      knots3 <- c(0,stats::quantile(log(y2-y1)[delta1*delta2==1],quantile_seq3),max(log(y2-y1)))
+      knots3 <- stats::quantile((y2-y1)[delta1*delta2==1],quantile_seq3)
     } else {
-      knots3 <- c(0,stats::quantile(log(y2)[delta1*delta2==1],quantile_seq3),max(y2))
+      knots3 <- stats::quantile(y2[delta1*delta2==1],quantile_seq3)
     }
   } else {return(NULL)}
 
@@ -97,22 +99,24 @@ get_basis <- function(x,knots,hazard,deriv=FALSE,flexsurv_compatible=FALSE){
     if(deriv){return(NULL)}
     basis_out <- pw_cum_mat(y = x,knots = knots)
   } else if(tolower(hazard) %in% c("royston-parmar","rp")){
+    knots_log <- log(knots) #for rp we generate basis on log scale, which means transforming knots and data
+    if(any(is.infinite(knots_log) | is.na(knots_log))){stop("For royston-parmar model, all knots must be positive.")}
     temp_log <- log(x)
     temp_log[is.infinite(temp_log)] <- NA
     if(deriv){
       if(flexsurv_compatible){
-        basis_out <- flexsurv::dbasis(x=temp_log,knots=knots)
+        basis_out <- flexsurv::dbasis(x=temp_log,knots=knots_log)
         basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
       } else{
-        basis_out <- ns_d(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
+        basis_out <- ns_d(x = temp_log,knots = knots_log[-c(1,length(knots_log))],Boundary.knots = knots_log[c(1,length(knots_log))],intercept = TRUE)
         basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
         }
     } else{
       if(flexsurv_compatible){
-        basis_out <- flexsurv::basis(x = temp_log,knots = knots)
+        basis_out <- flexsurv::basis(x = temp_log,knots = knots_log)
         basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
       } else{
-        basis_out <- splines::ns(x = temp_log,knots = knots[-c(1,length(knots))],Boundary.knots = knots[c(1,length(knots))],intercept = TRUE)
+        basis_out <- splines::ns(x = temp_log,knots = knots_log[-c(1,length(knots_log))],Boundary.knots = knots_log[c(1,length(knots_log))],intercept = TRUE)
         basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
         }
     }
@@ -186,7 +190,7 @@ get_start <- function(y1,y2,delta1,delta2,
     beta3 <- -stats::coef(fit_survreg_3)[-1] * alpha3
   }
 
-  #help create a useful naming convention (varname_1)
+  #help create a useful naming convention (varname_1) for each transition model
   if(p1 > 0){
     names(beta1) <- if(!is.null(colnames(Xmat1))) paste0(colnames(Xmat1),"_1") else NULL
   }
@@ -197,7 +201,7 @@ get_start <- function(y1,y2,delta1,delta2,
     names(beta3) <- if(!is.null(colnames(Xmat3))) paste0(colnames(Xmat3),"_3") else NULL
   }
 
-  #for weibull, basically carry over the same stuff from originally.
+  #for weibull, basically carry over the same stuff from original SemiCompRisks.
   if(tolower(hazard) %in% c("weibull","wb")){
     #assign starting values
     startVals <- c(log(kappa1), #h1 intercept (k1)
@@ -222,7 +226,8 @@ get_start <- function(y1,y2,delta1,delta2,
   p03<- ncol(basis3)
 
   if(tolower(hazard) %in% c("bspline", "bs", "piecewise", "pw")){
-    #run the model with no covariates to get possible start values
+    #eventually, could add similar idea as below, fitting linear model of bases to log(h0) from weibull
+    #for now, run the model with no covariates to get possible start values
     startVals <- stats::optim(par = rep(0,p01+p02+p03+1),fn = nll_func, gr = ngrad_func,
                        y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                        Xmat1=NULL, Xmat2=NULL, Xmat3=NULL,
@@ -256,21 +261,22 @@ get_start <- function(y1,y2,delta1,delta2,
     names(startVals) <- c(paste0("phi",1:p01,"_1"),paste0("phi",1:p02,"_2"),paste0("phi",1:p03,"_3"),"ltheta")
     startVals <- c(startVals,beta1,beta2,beta3)
 
-    #do a final check that the resulting values are feasible in the royston parmar model
+    #do a final check that the resulting values are "feasible" in the royston parmar model
+    #if not, shift around with small steps to see if a perturbed set of values is feasible
     getout <- FALSE
-    for(i in c(seq(0,2,0.5),seq(-0.5,-2,-0.5))){
-      for(j in c(seq(0,2,0.5),seq(-0.5,-2,-0.5))){
-        # for(k in c(seq(0,2,0.5),seq(-0.5,-2,-0.5))){
-        #we will just consider toggling the first two parameter values
-        startVals[c(1,1+p01,1+p01+p02)] <- startVals[c(1,1+p01,1+p01+p02)] + i
-        startVals[c(2,2+p01,2+p01+p02)] <- startVals[c(2,2+p01,2+p01+p02)] + j
+    for(i in c(seq(0,3,0.5),seq(-0.5,-3,-0.5))){
+      for(j in c(seq(0,3,0.5),seq(-0.5,-3,-0.5))){
+        # for(k in c(seq(0,3,0.5),seq(-0.5,-3,-0.5))){
+        #we will just consider toggling the last two parameter values per hazard
+        startVals[c(p01-1,p01+p02-1,p01+p02+p03-1)] <- startVals[c(p01-1,p01+p02-1,p01+p02+p03-1)] + i
+        startVals[c(p01,p01+p02,p01+p02+p03)] <- startVals[c(p01,p01+p02,p01+p02+p03)] + j
         ll_temp <- nll_func(para=startVals,y1=y1, y2=y2, delta1=delta1, delta2=delta2,
                             Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
                             hazard=hazard, frailty=frailty, model=model,
                             basis1=basis1, basis2=basis2, basis3=basis3, basis3_y1=basis3_y1,
                             dbasis1=dbasis1, dbasis2=dbasis2, dbasis3=dbasis3)
         if(!is.nan(ll_temp) ){
-          print('viable royston parmar starting value found!')
+          # print('viable royston parmar starting value found!')
           getout <- TRUE
         }
         # }
@@ -279,7 +285,7 @@ get_start <- function(y1,y2,delta1,delta2,
       if(getout){break}
     }
 
-    if(!getout){stop("starting royston-parmar value is not finite. Input valid starting values.")}
+    if(!getout){stop("finite starting royston-parmar log likelihood value not found. Try manually inputting valid start values.")}
   }
 
   return(startVals)

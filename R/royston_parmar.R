@@ -1,7 +1,7 @@
 ns_d <- function (x, df = NULL, knots = NULL, intercept = FALSE, Boundary.knots = range(x))
 {
 
-  #draws from rstpm2 package nsxD function, extending the ns function from splines
+  #inspired by rstpm2 package nsxD function, extending the ns function from splines
   #generate derivative basis of natural cubic spline function
   #I purposefully write this function as the derivative of ns, for use with Royston parmar model
 
