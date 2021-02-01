@@ -19,6 +19,10 @@
 get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model){
 
   if(tolower(hazard) %in% c("bspline","bs")){
+    # Recall, cubic bsplines are built by columns that are basically an orthogonalized transformation of:
+    # (1, y, y^2, y^3, (y-internalknot1)_+^3,(y-internalknot2)_+^3,(y-internalknot3)_+^3),...
+    # Therefore, for cubic spline the minimum number of parameters in a hazard must be 4 (aka no internal knots)
+    if(any(c(p01,p02,p03) < 4)){stop("Cubic B-Spline Specification must have at least 4 parameters in each hazard.")}
 
     quantile_seq1 <- seq(from = 0,to = 1, length.out = p01-2)[-c(1,p01-2)]
     quantile_seq2 <- seq(from = 0,to = 1, length.out = p02-2)[-c(1,p02-2)]

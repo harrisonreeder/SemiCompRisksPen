@@ -21,11 +21,11 @@ forward_selection(
 \arguments{
 \item{vars}{character string with all of the possible variable names to be searched through.}
 
-\item{data}{a data.frame in which to interpret the variables named in Formula.}
+\item{data}{a \code{data.frame} in which to interpret the variables named in Formula.}
 
-\item{na.action}{how NAs are treated. See model.frame.}
+\item{na.action}{how NAs are treated. See \code{\link[stats]{model.frame}}.}
 
-\item{subset}{a specification of the rows to be used: defaults to all rows. See model.frame.}
+\item{subset}{a specification of the rows to be used: defaults to all rows. See \code{\link[stats]{model.frame}}.}
 
 \item{hazard}{String specifying the form of the baseline hazard.}
 
@@ -37,7 +37,7 @@ be included. Currently this must be set to TRUE.}
 \item{knots_list}{Used for hazard specifications besides Weibull, a
 list of three increasing sequences of integers, each corresponding to
 the knots for the flexible model on the corresponding transition baseline hazard. If
-\code{NULL}, will be created by \code{get_default_knots_list}.}
+\code{NULL}, will be created by \code{\link{get_default_knots_list}}.}
 
 \item{select_crit}{a string indicating what criterion should be used to determine whether a covariate should be added.}
 
