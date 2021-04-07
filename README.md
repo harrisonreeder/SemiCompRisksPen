@@ -11,7 +11,7 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 status](https://www.r-pkg.org/badges/version/SemiCompRisksPen)](https://CRAN.R-project.org/package=SemiCompRisksPen)
 <!-- badges: end -->
 
-The goal of SemiCompRisksPen is to fit parmetric frailty-based illness-death models with penalization.
+The goal of SemiCompRisksPen is to fit parametric frailty-based illness-death models with penalization.
 
 ## Code of Conduct
 
