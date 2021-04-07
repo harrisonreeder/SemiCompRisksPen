@@ -1,4 +1,4 @@
-#' Calculate absolute risk profiles
+#' Calculate Weibull absolute risk profiles
 #'
 #' This function calculates absolute risk profiles under weibull baseline hazard specifications.
 #'
