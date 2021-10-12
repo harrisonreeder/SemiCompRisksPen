@@ -119,7 +119,8 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                    error=function(cnd){
                      message(cnd)
                      cat("\n")
-                     return(list(fail=TRUE,hazard=hazard,frailty=frailty,model=model,
+                     return(list(fail=TRUE,
+                                 formula = form2,hazard=hazard,frailty=frailty,model=model,
                                  startVals=startVals,knots_list=knots_list,
                                  basis1=basis1,basis2=basis2,basis3=basis3,
                                  dbasis1=dbasis1,dbasis2=dbasis2,dbasis3=dbasis3,
@@ -147,11 +148,12 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
     nP <- c(ncol(Xmat1), ncol(Xmat2), ncol(Xmat3))
     nP0 <- c(p01,p02,p03)
     value <- list(estimate = fit0$par,
-                  Finv = if(hessian) solve(fit0$hessian) else NA,
+                  Finv = if(hessian) MASS::ginv(fit0$hessian) else NA,
                   logLike = -fit0$value,
                   knots_list=knots_list,
                   myLabels = myLabels,
                   frailty = frailty,
+                  formula = form2,
                   optim_details = list(counts=fit0$counts,convergence=fit0$convergence,message=fit0$message,startVals=startVals),
                   nP = nP, nP0=nP0)#, Xmat = list(Xmat1, Xmat2, Xmat3))
     value$class <- c("Freq_HReg2",
@@ -183,7 +185,7 @@ print.Freq_HReg2 <- function (x, digits = 3, alpha = 0.05, ...)
   conf.level = alpha
   obj <- x
   logEst <- obj$estimate
-  logSE <- sqrt(diag(obj$Finv))
+  logSE <- if(all(is.na(obj$Finv))) NA else sqrt(diag(obj$Finv))
   value <- cbind(logEst, logSE, logEst - abs(stats::qnorm(conf.level/2,
                                                    0, 1)) * logSE, logEst + abs(stats::qnorm(conf.level/2, 0, 1)) *
                    logSE)
@@ -230,7 +232,7 @@ summary.Freq_HReg2 <- function (object, digits = 3, alpha = 0.05, ...)
   conf.level = alpha
   obj <- object
   logEst <- obj$estimate
-  logSE <- sqrt(diag(obj$Finv))
+  logSE <- if(all(is.na(obj$Finv))) NA else sqrt(diag(obj$Finv))
   results <- cbind(logEst, logEst - abs(stats::qnorm(conf.level/2,
                                               0, 1)) * logSE, logEst + abs(stats::qnorm(conf.level/2, 0, 1)) *
                      logSE)
@@ -300,7 +302,7 @@ summary.Freq_HReg2 <- function (object, digits = 3, alpha = 0.05, ...)
       output[2, 1:3] <- results[2, ]
       output[2, 4:6] <- results[4, ]
       output[2, 7:9] <- results[6, ]
-    } else{
+    } else{ #this covers piecewise as the main other case
       p01 <- obj$nP0[1]; p02 <- obj$nP0[2]; p03 <- obj$nP0[3]
       p0max <- max(obj$nP0)
 
@@ -308,7 +310,7 @@ summary.Freq_HReg2 <- function (object, digits = 3, alpha = 0.05, ...)
       output <- cbind(
         rbind(results[1:p01,],matrix(data=0,ncol=3,nrow=(p0max-p01))),
         rbind(results[(1+p01):(p01+p02),],matrix(data=0,ncol=3,nrow=(p0max-p02))),
-        rbind(results[(1+p01):(p01+p02),],matrix(data=0,ncol=3,nrow=(p0max-p03)))
+        rbind(results[(1+p01+p02):(p01+p02+p03),],matrix(data=0,ncol=3,nrow=(p0max-p03)))
       )
       dimnames(output) <- list(paste0(obj$class[4],": phi",1:p0max),
                                c("h1-PM", "LL", "UL", "h2-PM", "LL", "UL", "h3-PM",
@@ -367,412 +369,497 @@ print.summ.Freq_HReg2 <- function (x, digits = 3, ...)
 # For the new models.
 #
 #
-# predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL, x3new = NULL,
-#           tseq = c(0, 5, 10), alpha = 0.05, ...)
-# {
-#   conf.level = alpha
-#   obj <- object
-#   T2seq <- tseq
-#   yLim <- NULL
-#   if (obj$class[2] == "Surv") {
-#     if (!is.null(x1new)) {
-#       stop("'x1new' is for semi-competing risks models so it must be specified as NULL for univariate models")
-#     }
-#     if (!is.null(x2new)) {
-#       stop("'x2new' is for semi-competing risks models so it must be specified as NULL for univariate models")
-#     }
-#     if (!is.null(x3new)) {
-#       stop("'x3new' is for semi-competing risks models so it must be specified as NULL for univariate models")
-#     }
-#     T2 <- seq(from = min(T2seq), to = max(T2seq), length = 100)
-#     kappa <- exp(obj$estimate[1])
-#     alpha <- exp(obj$estimate[2])
-#     log_kappa <- obj$estimate[1]
-#     log_alpha <- obj$estimate[2]
-#     S0 <- exp(-(kappa * (T2)^alpha))
-#     if (!is.null(xnew)) {
-#       J <- cbind(1, exp(log_alpha) * log(T2), matrix(xnew,
-#                                                      nrow = 100, ncol = length(xnew), byrow = T))
-#       Var.loglogS0 <- J %*% obj$Finv %*% t(J)
-#     }
-#     else {
-#       J <- cbind(1, exp(log_alpha) * log(T2))
-#       Var.loglogS0 <- J %*% obj$Finv[1:2, 1:2] %*% t(J)
-#     }
-#     se.loglogS0 <- sqrt(diag(Var.loglogS0))
-#     se.loglogS0[is.na(se.loglogS0)] <- 0
-#     LL <- S0^exp(-qnorm(conf.level/2) * se.loglogS0)
-#     UL <- S0^exp(qnorm(conf.level/2) * se.loglogS0)
-#     BS_tbl <- data.frame(time = T2, S = S0, LL = LL, UL = UL)
-#     h0 <- alpha * kappa * (T2)^(alpha - 1)
-#     if (!is.null(xnew)) {
-#       J <- cbind(h0, h0 * (1 + alpha * log(T2)), h0 * matrix(xnew,
-#                                                              nrow = 100, ncol = length(xnew), byrow = T))
-#       Var.h0 <- J %*% obj$Finv %*% t(J)
-#     }
-#     else {
-#       J <- cbind(h0, h0 * (1 + alpha * log(T2)))
-#       Var.h0 <- J %*% obj$Finv[1:2, 1:2] %*% t(J)
-#     }
-#     se.h0 <- sqrt(diag(Var.h0))
-#     se.h0[is.nan(se.h0)] <- 0
-#     LLh0 <- h0 - qnorm(conf.level/2) * se.h0
-#     ULh0 <- h0 + qnorm(conf.level/2) * se.h0
-#     LLh0[LLh0 < 0] <- 0
-#     T2h <- T2
-#     if (T2[1] == 0) {
-#       T2h <- T2h[-1]
-#       h0 <- h0[-1]
-#       LLh0 <- LLh0[-1]
-#       ULh0 <- ULh0[-1]
-#     }
-#     BH_tbl <- data.frame(time = T2h, h = h0, LL = LLh0, UL = ULh0)
-#     value <- list(h = BH_tbl, S = BS_tbl)
-#   }
-#   if (obj$class[2] == "ID") {
-#     if (!is.null(xnew)) {
-#       stop("'xnew' is for univariate models so it must be specified as NULL for semi-competing risks models")
-#     }
-#     nP = obj$nP
-#     T2 <- seq(from = min(T2seq), to = max(T2seq), length = 100)
-#     kappa <- exp(obj$estimate[1])
-#     alpha <- exp(obj$estimate[2])
-#     log_alpha <- obj$estimate[2]
-#     S0.1 <- exp(-kappa * (T2)^alpha)
-#     if (!is.null(x1new) & nP[1] > 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2), matrix(x1new,
-#                                                      nrow = 100, ncol = length(x1new), byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(1:2, 8:(8 +
-#                                                    nP[1] - 1)), c(1:2, 8:(8 + nP[1] - 1))] %*%
-#           t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(1:2, 7:(7 +
-#                                                    nP[1] - 1)), c(1:2, 7:(7 + nP[1] - 1))] %*%
-#           t(J)
-#       }
-#     }
-#     else if (is.null(x1new) | nP[1] == 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2))
-#       Var.loglogS0 <- J %*% obj$Finv[1:2, 1:2] %*% t(J)
-#     }
-#     se.loglogS0 <- sqrt(diag(Var.loglogS0))
-#     LL.1 <- S0.1^exp(-qnorm(conf.level/2) * se.loglogS0)
-#     UL.1 <- S0.1^exp(qnorm(conf.level/2) * se.loglogS0)
-#     h0.1 <- alpha * kappa * (T2)^(alpha - 1)
-#     if (!is.null(x1new) & nP[1] > 0) {
-#       J <- cbind(h0.1, h0.1 * (1 + alpha * log(T2)), h0.1 *
-#                    matrix(x1new, nrow = 100, ncol = length(x1new),
-#                           byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.h0.1 <- J %*% obj$Finv[c(1:2, 8:(8 + nP[1] -
-#                                                1)), c(1:2, 8:(8 + nP[1] - 1))] %*% t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.h0.1 <- J %*% obj$Finv[c(1:2, 7:(7 + nP[1] -
-#                                                1)), c(1:2, 7:(7 + nP[1] - 1))] %*% t(J)
-#       }
-#     }
-#     else if (is.null(x1new) | nP[1] == 0) {
-#       J <- cbind(h0.1, h0.1 * (1 + alpha * log(T2)))
-#       Var.h0.1 <- J %*% obj$Finv[1:2, 1:2] %*% t(J)
-#     }
-#     se.h0.1 <- sqrt(diag(Var.h0.1))
-#     se.h0.1[is.nan(se.h0.1)] <- 0
-#     LLh0.1 <- h0.1 - qnorm(conf.level/2) * se.h0.1
-#     ULh0.1 <- h0.1 + qnorm(conf.level/2) * se.h0.1
-#     LLh0.1[LLh0.1 < 0] <- 0
-#     kappa <- exp(obj$estimate[3])
-#     alpha <- exp(obj$estimate[4])
-#     log_alpha <- obj$estimate[4]
-#     S0.2 <- exp(-kappa * (T2)^alpha)
-#     if (!is.null(x2new) & nP[2] > 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2), matrix(x2new,
-#                                                      nrow = 100, ncol = length(x2new), byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(3:4, (8 + nP[1]):(8 +
-#                                                              nP[1] + nP[2] - 1)), c(3:4, (8 + nP[1]):(8 +
-#                                                                                                         nP[1] + nP[2] - 1))] %*% t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(3:4, (7 + nP[1]):(7 +
-#                                                              nP[1] + nP[2] - 1)), c(3:4, (7 + nP[1]):(7 +
-#                                                                                                         nP[1] + nP[2] - 1))] %*% t(J)
-#       }
-#     }
-#     else if (is.null(x2new) | nP[2] == 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2))
-#       Var.loglogS0 <- J %*% obj$Finv[3:4, 3:4] %*% t(J)
-#     }
-#     se.loglogS0 <- sqrt(diag(Var.loglogS0))
-#     LL.2 <- S0.2^exp(-qnorm(conf.level/2) * se.loglogS0)
-#     UL.2 <- S0.2^exp(qnorm(conf.level/2) * se.loglogS0)
-#     h0.2 <- alpha * kappa * (T2)^(alpha - 1)
-#     if (!is.null(x2new) & nP[2] > 0) {
-#       J <- cbind(h0.2, h0.2 * (1 + alpha * log(T2)), h0.2 *
-#                    matrix(x2new, nrow = 100, ncol = length(x2new),
-#                           byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.h0.2 <- J %*% obj$Finv[c(3:4, (8 + nP[1]):(8 +
-#                                                          nP[1] + nP[2] - 1)), c(3:4, (8 + nP[1]):(8 +
-#                                                                                                     nP[1] + nP[2] - 1))] %*% t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.h0.2 <- J %*% obj$Finv[c(3:4, (7 + nP[1]):(7 +
-#                                                          nP[1] + nP[2] - 1)), c(3:4, (7 + nP[1]):(7 +
-#                                                                                                     nP[1] + nP[2] - 1))] %*% t(J)
-#       }
-#     }
-#     else if (is.null(x2new) | nP[2] == 0) {
-#       J <- cbind(h0.2, h0.2 * (1 + alpha * log(T2)))
-#       Var.h0.2 <- J %*% obj$Finv[3:4, 3:4] %*% t(J)
-#     }
-#     se.h0.2 <- sqrt(diag(Var.h0.2))
-#     se.h0.2[is.nan(se.h0.2)] <- 0
-#     LLh0.2 <- h0.2 - qnorm(conf.level/2) * se.h0.2
-#     ULh0.2 <- h0.2 + qnorm(conf.level/2) * se.h0.2
-#     LLh0.2[LLh0.2 < 0] <- 0
-#     kappa <- exp(obj$estimate[5])
-#     alpha <- exp(obj$estimate[6])
-#     log_alpha <- obj$estimate[6]
-#     S0.3 <- exp(-kappa * (T2)^alpha)
-#     if (!is.null(x3new) & nP[3] > 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2), matrix(x3new,
-#                                                      nrow = 100, ncol = length(x3new), byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(5:6, (8 + nP[1] +
-#                                                  nP[2]):(8 + nP[1] + nP[2] + +nP[3] - 1)), c(5:6,
-#                                                                                              (8 + nP[1] + nP[3]):(8 + nP[1] + nP[2] + nP[3] -
-#                                                                                                                     1))] %*% t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.loglogS0 <- J %*% obj$Finv[c(5:6, (7 + nP[1] +
-#                                                  nP[2]):(7 + nP[1] + nP[2] + +nP[3] - 1)), c(5:6,
-#                                                                                              (7 + nP[1] + nP[3]):(7 + nP[1] + nP[2] + nP[3] -
-#                                                                                                                     1))] %*% t(J)
-#       }
-#     }
-#     else if (is.null(x3new) | nP[3] == 0) {
-#       J <- cbind(1, exp(log_alpha) * log(T2))
-#       Var.loglogS0 <- J %*% obj$Finv[5:6, 5:6] %*% t(J)
-#     }
-#     se.loglogS0 <- sqrt(diag(Var.loglogS0))
-#     LL.3 <- S0.3^exp(-qnorm(conf.level/2) * se.loglogS0)
-#     UL.3 <- S0.3^exp(qnorm(conf.level/2) * se.loglogS0)
-#     h0.3 <- alpha * kappa * (T2)^(alpha - 1)
-#     if (!is.null(x3new) & nP[3] > 0) {
-#       J <- cbind(h0.3, h0.3 * (1 + alpha * log(T2)), h0.3 *
-#                    matrix(x3new, nrow = 100, ncol = length(x3new),
-#                           byrow = T))
-#       if (obj$frailty == TRUE) {
-#         Var.h0.3 <- J %*% obj$Finv[c(5:6, (8 + nP[1] +
-#                                              nP[2]):(8 + nP[1] + nP[2] + +nP[3] - 1)), c(5:6,
-#                                                                                          (8 + nP[1] + nP[3]):(8 + nP[1] + nP[2] + nP[3] -
-#                                                                                                                 1))] %*% t(J)
-#       }
-#       else if (obj$frailty == FALSE) {
-#         Var.h0.3 <- J %*% obj$Finv[c(5:6, (7 + nP[1] +
-#                                              nP[2]):(7 + nP[1] + nP[2] + +nP[3] - 1)), c(5:6,
-#                                                                                          (7 + nP[1] + nP[3]):(7 + nP[1] + nP[2] + nP[3] -
-#                                                                                                                 1))] %*% t(J)
-#       }
-#     }
-#     else if (is.null(x3new) | nP[3] == 0) {
-#       J <- cbind(h0.3, h0.3 * (1 + alpha * log(T2)))
-#       Var.h0.3 <- J %*% obj$Finv[5:6, 5:6] %*% t(J)
-#     }
-#     se.h0.3 <- sqrt(diag(Var.h0.3))
-#     se.h0.3[is.nan(se.h0.3)] <- 0
-#     LLh0.3 <- h0.3 - qnorm(conf.level/2) * se.h0.3
-#     ULh0.3 <- h0.3 + qnorm(conf.level/2) * se.h0.3
-#     LLh0.3[LLh0.3 < 0] <- 0
-#     T2h <- T2
-#     if (T2[1] == 0) {
-#       T2h <- T2h[-1]
-#       h0.1 <- h0.1[-1]
-#       LLh0.1 <- LLh0.1[-1]
-#       ULh0.1 <- ULh0.1[-1]
-#       h0.2 <- h0.2[-1]
-#       LLh0.2 <- LLh0.2[-1]
-#       ULh0.2 <- ULh0.2[-1]
-#       h0.3 <- h0.3[-1]
-#       LLh0.3 <- LLh0.3[-1]
-#       ULh0.3 <- ULh0.3[-1]
-#     }
-#     BH1_tbl <- data.frame(time = T2h, h.1 = h0.1, LL.1 = LLh0.1,
-#                           UL.1 = ULh0.1)
-#     BH2_tbl <- data.frame(time = T2h, h.2 = h0.2, LL.2 = LLh0.2,
-#                           UL.2 = ULh0.2)
-#     BH3_tbl <- data.frame(time = T2h, h.3 = h0.3, LL.3 = LLh0.3,
-#                           UL.3 = ULh0.3)
-#     BS1_tbl <- data.frame(time = T2, S.1 = S0.1, LL.1 = LL.1,
-#                           UL.1 = UL.1)
-#     BS2_tbl <- data.frame(time = T2, S.2 = S0.2, LL.2 = LL.2,
-#                           UL.2 = UL.2)
-#     BS3_tbl <- data.frame(time = T2, S.3 = S0.3, LL.3 = LL.3,
-#                           UL.3 = UL.3)
-#     value <- list(h.1 = BH1_tbl, h.2 = BH2_tbl, h.3 = BH3_tbl,
-#                   S.1 = BS1_tbl, S.2 = BS2_tbl, S.3 = BS3_tbl)
-#   }
-#   value$xnew <- xnew
-#   value$x1new <- x1new
-#   value$x2new <- x2new
-#   value$x3new <- x3new
-#   value$tseq <- tseq
-#   value$setup$model <- obj$setup$model
-#   value$class <- obj$class
-#   class(value) <- "pred.Freq_HReg2"
-#   return(value)
-# }
-#
-#
-#
-#
-#
-# plot.pred.Freq_HReg <- function (x, plot.est = "Haz", xlab = NULL, ylab = NULL, ...)
-# {
-#   obj <- x
-#   T2seq <- x$tseq
-#   yLim <- NULL
-#   if (obj$class[2] == "Surv") {
-#     if (is.null(yLim)) {
-#       if (plot.est == "Surv") {
-#         yLim <- seq(from = 0, to = 1, by = 0.2)
-#       }
-#       if (plot.est == "Haz") {
-#         grid <- (max(obj$h$UL) - min(obj$h$LL))/5
-#         yLim <- seq(from = min(obj$h$LL), to = max(obj$h$UL),
-#                     by = grid)
-#       }
-#     }
-#     if (is.null(ylab)) {
-#       if (plot.est == "Surv") {
-#         ylab <- "Survival"
-#       }
-#       if (plot.est == "Haz") {
-#         ylab <- "Hazard"
-#       }
-#     }
-#     if (is.null(xlab))
-#       xlab <- "Time"
-#     if (plot.est == "Surv") {
-#       plot(range(T2seq), range(yLim), xlab = xlab, ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                S(t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = yLim)
-#       lines(obj$S$time, obj$S$S, col = "red", lwd = 3)
-#       lines(obj$S$time, obj$S$LL, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$S$time, obj$S$UL, col = "red", lwd = 3,
-#             lty = 3)
-#     }
-#     if (plot.est == "Haz") {
-#       plot(range(T2seq), range(yLim), xlab = xlab, ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                h(t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = round(yLim, 4))
-#       lines(obj$h$time, obj$h$h, col = "red", lwd = 3)
-#       lines(obj$h$time, obj$h$LL, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$h$time, obj$h$UL, col = "red", lwd = 3,
-#             lty = 3)
-#     }
-#   }
-#   if (obj$class[2] == "ID") {
-#     if (is.null(ylab)) {
-#       if (plot.est == "Surv") {
-#         ylab <- "Survival"
-#       }
-#       if (plot.est == "Haz") {
-#         ylab <- "Hazard"
-#       }
-#     }
-#     if (is.null(xlab)) {
-#       xlab <- c("Time", "Time", "Time")
-#       if (obj$class[5] == "semi-Markov") {
-#         xlab[3] <- "Time since non-terminal event"
-#       }
-#     }
-#     if (is.null(yLim)) {
-#       if (plot.est == "Surv") {
-#         yLim <- seq(from = 0, to = 1, by = 0.2)
-#       }
-#       if (plot.est == "Haz") {
-#         ygrid <- (max(x$h.1$UL.1, x$h.2$UL.2, x$h.3$UL.3) -
-#                     0)/5
-#         yLim <- seq(from = 0, to = max(x$h.1$UL.1, x$h.2$UL.2,
-#                                        x$h.3$UL.3), by = ygrid)
-#       }
-#     }
-#     if (plot.est == "Surv") {
-#       par(mfrow = c(1, 3))
-#       plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                S[1](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = yLim)
-#       lines(obj$S.1$time, obj$S.1$S.1, col = "blue", lwd = 3)
-#       lines(obj$S.1$time, obj$S.1$LL.1, col = "blue", lwd = 3,
-#             lty = 3)
-#       lines(obj$S.1$time, obj$S.1$UL.1, col = "blue", lwd = 3,
-#             lty = 3)
-#       plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                S[2](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = yLim)
-#       lines(obj$S.2$time, obj$S.2$S.2, col = "red", lwd = 3)
-#       lines(obj$S.2$time, obj$S.2$LL.2, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$S.2$time, obj$S.2$UL.2, col = "red", lwd = 3,
-#             lty = 3)
-#       plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                S[3](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = yLim)
-#       lines(obj$S.3$time, obj$S.3$S.3, col = "red", lwd = 3)
-#       lines(obj$S.3$time, obj$S.3$LL.3, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$S.3$time, obj$S.3$UL.3, col = "red", lwd = 3,
-#             lty = 3)
-#     }
-#     if (plot.est == "Haz") {
-#       par(mfrow = c(1, 3))
-#       plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                h[1](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = round(yLim, 4))
-#       lines(obj$h.1$time, obj$h.1$h.1, col = "blue", lwd = 3)
-#       lines(obj$h.1$time, obj$h.1$LL.1, col = "blue", lwd = 3,
-#             lty = 3)
-#       lines(obj$h.1$time, obj$h.1$UL.1, col = "blue", lwd = 3,
-#             lty = 3)
-#       plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                h[2](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = round(yLim, 4))
-#       lines(obj$h.2$time, obj$h.2$h.2, col = "red", lwd = 3)
-#       lines(obj$h.2$time, obj$h.2$LL.2, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$h.2$time, obj$h.2$UL.2, col = "red", lwd = 3,
-#             lty = 3)
-#       plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
-#            type = "n", main = expression(paste("Estimated ",
-#                                                h[3](t), "")), axes = FALSE)
-#       axis(1, at = T2seq)
-#       axis(2, at = round(yLim, 4))
-#       lines(obj$h.3$time, obj$h.3$h.3, col = "red", lwd = 3)
-#       lines(obj$h.3$time, obj$h.3$LL.3, col = "red", lwd = 3,
-#             lty = 3)
-#       lines(obj$h.3$time, obj$h.3$UL.3, col = "red", lwd = 3,
-#             lty = 3)
-#     }
-#   }
-#   invisible()
-# }
+predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL, x3new = NULL,
+          tseq = c(0, 5, 10), alpha = 0.05, ...)
+{
+  # browser()
+  conf.level = alpha
+  obj <- object
+  T2seq <- tseq
+  yLim <- NULL
+  if (obj$class[2] == "ID") {
+    if (!is.null(xnew)) {
+      stop("'xnew' is for univariate models so it must be specified as NULL for semi-competing risks models")
+    }
+    nP = obj$nP
+    nP0 = obj$nP0
+    nP0_tot <- if (obj$frailty == TRUE) sum(nP0) + 1 else sum(nP0)
+    #WHY IS THIS LIKE THIS, AND NOT TSEQ ITSELF?
+    # T2 <- seq(from = min(T2seq), to = max(T2seq), length = 100)
+    T2 <- tseq
+
+    eta1 <- if (!is.null(x1new) & nP[1] > 0) {
+      x1new %*% obj$estimate[(1 + nP0_tot):(nP0_tot + nP[1])]
+    } else 0
+    eta2 <- if (!is.null(x2new) & nP[2] > 0) {
+      x2new %*% obj$estimate[(1 + nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2])]
+    } else 0
+    eta3 <- if (!is.null(x3new) & nP[3] > 0) {
+      x3new %*% obj$estimate[(1 + nP0_tot + nP[1] + nP[2]):(nP0_tot + nP[1] + nP[2] + nP[3])]
+    } else 0
+
+    #FIRST TRANSITION
+    if(obj$class[4] == "Weibull"){
+      kappa <- exp(obj$estimate[1])
+      alpha <- exp(obj$estimate[2])
+      log_alpha <- obj$estimate[2]
+      S.1 <- exp(-kappa * (T2)^alpha) * exp(eta1)
+      #Use delta method to compute baseline survival confidence intervals
+      #but, it would only be problematic at the exact knots I think?
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.1 <- NA
+      } else if (!is.null(x1new) & nP[1] > 0) {
+        #matrix with as many columns as parameters in S1, and as many rows as times in T2
+        #under weibull, log(-log(S(t))) = log_alpha + log_kappa + xtbeta + alpha*log(t)
+        #so, each row of J is the gradient at a particular T2 wrt logalpha, logkappa, beta1, ..., betap
+        J <- cbind(1, exp(log_alpha) * log(T2),
+                   matrix(x1new, nrow = length(T2), ncol = length(x1new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.1 <- J %*% obj$Finv[c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1])),
+                                      c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1]))] %*% t(J)
+      } else if (is.null(x1new) | nP[1] == 0) {
+        J <- cbind(1, exp(log_alpha) * log(T2))
+        Var.loglogS.1 <- J %*% obj$Finv[1:nP0[1], 1:nP0[1]] %*% t(J)
+      }
+
+      h.1 <- alpha * kappa * (T2)^(alpha - 1) * exp(eta1)
+      #hazard is exp(logalpha) * exp(logkappa) * t^(exp(logalpha)-1) * exp(xtbeta)
+      #so, each row of J is gradient wrt logkappa, logalpha, beta1, ..., betap
+      #WHY ISNT EVERYTHING MULTIPLIED BY exp(xtbeta) ? seems like it should be. I'm gonna add it
+      if(all(is.na(obj$Finv))){
+        Var.h.1 <- NA
+      } else if (!is.null(x1new) & nP[1] > 0) {
+        J <- cbind(h.1, h.1 * (1 + alpha * log(T2)), h.1 *
+                     matrix(x1new, nrow = length(T2), ncol = length(x1new), byrow = T))
+        Var.h.1 <- J %*% obj$Finv[c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1])),
+                                  c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1]))] %*% t(J)
+      }
+      else if (is.null(x1new) | nP[1] == 0) {
+        J <- cbind(h.1, h.1 * (1 + alpha * log(T2)))
+        Var.h.1 <- J %*% obj$Finv[1:nP0[1], 1:nP0[1]] %*% t(J)
+      }
+    } else{ #for now the only alternative we entertain is piecewise constant
+      stopifnot(obj$class[4] == "Piecewise Constant")
+      basis1 <- get_basis(x = T2,knots = obj$knots_list[[1]],hazard = "piecewise")
+      phi1 <- obj$estimate[1:nP0[1]]
+      Lambda01 <- as.vector(basis1 %*% exp(phi1))
+      S.1 <- exp(-Lambda01*exp(eta1))
+      #Use delta method to compute baseline survival confidence intervals
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.1 <- NA
+      } else if (!is.null(x1new) & nP[1] > 0) {
+        #matrix with as many columns as parameters in S1, and as many rows as times in T2
+        #under piecewise, log(-log(S(t))) = log( basis1 %*% exp(phi1)) + log(xtbeta)
+        #so, each row of J is the gradient at a particular T2 wrt phi1, ..., phiK, beta1, ..., betap
+        J <- cbind(
+          #first, this multiplies every row of basis1 by exp(phi1),
+          #then, this divides every column of the resulting matrix by the vector Lambda01
+          t(t(basis1) * exp(phi1)) / Lambda01,
+                    matrix(x1new, nrow = length(T2), ncol = length(x1new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.1 <- J %*% obj$Finv[c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1])),
+                                        c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1]))] %*%
+          t(J)
+      } else if (is.null(x1new) | nP[1] == 0) {
+        J <- t(t(basis1) * exp(phi1)) / Lambda01
+        Var.loglogS.1 <- J %*% obj$Finv[1:nP0[1], 1:nP0[1]] %*% t(J)
+      }
+
+      #Use delta method compute baseline hazard confidence intervals
+      #vector saying which interval each time falls into
+      cut_cats1 <- rowSums(basis1!=0)
+      if(T2[1]==0){cut_cats1[1] <- 1}
+      stopifnot(length(cut_cats1)==length(T2))
+      h.1 <- exp(phi1)[cut_cats1] * exp(eta1)
+      #build a matrix with 0's everywhere, except on ith row, set column that T2i falls in to 1
+      temp_mat <- matrix(data=0,nrow=length(T2),ncol=nP0[1])
+      temp_mat[cbind(1:length(T2),cut_cats1)] <- 1
+      temp_mat <- t(t(temp_mat) * exp(phi1))
+
+      if(all(is.na(obj$Finv))){
+        Var.h.1 <- NA
+      } else if (!is.null(x1new) & nP[1] > 0) {
+        J <- cbind(temp_mat * exp(eta1), h.1 *
+                     matrix(x1new, nrow = length(T2), ncol = length(x1new), byrow = T))
+        Var.h.1 <- J %*% obj$Finv[c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1])),
+                                  c(1:nP0[1], (1+nP0_tot):(nP0_tot + nP[1]))] %*% t(J)
+      }
+      else if (is.null(x1new) | nP[1] == 0) {
+        J <- temp_mat * exp(eta1)
+        Var.h.1 <- J %*% obj$Finv[1:nP0[1], 1:nP0[1]] %*% t(J)
+      }
+    }
+    if(all(is.na(Var.loglogS.1))){
+      se.loglogS.1 <- NA
+    } else{
+      se.loglogS.1 <- sqrt(diag(Var.loglogS.1))
+      se.loglogS.1[is.nan(se.loglogS.1)] <- 0
+    }
+    LL.1 <- S.1^exp(-qnorm(conf.level/2) * se.loglogS.1)
+    UL.1 <- S.1^exp(qnorm(conf.level/2) * se.loglogS.1)
+    if(all(is.na(Var.h.1))){
+      se.h.1 <- NA
+    } else{
+      se.h.1 <- sqrt(diag(Var.h.1))
+      se.h.1[is.nan(se.h.1)] <- 0
+    }
+    LLh.1 <- h.1 + qnorm(conf.level/2) * se.h.1 #sign reversed because 0.025 quantile is negative
+    ULh.1 <- h.1 - qnorm(conf.level/2) * se.h.1
+    LLh.1[LLh.1 < 0] <- 0
+
+    #SECOND TRANSITION
+    if(obj$class[4] == "Weibull"){
+      kappa <- exp(obj$estimate[3])
+      alpha <- exp(obj$estimate[4])
+      log_alpha <- obj$estimate[4]
+      S.2 <- exp(-kappa * (T2)^alpha) * exp(eta2)
+      #Use delta method to compute baseline survival confidence intervals
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.2 <- NA
+      } else if (!is.null(x2new) & nP[2] > 0) {
+        #matrix with as many columns as parameters in S2, and as many rows as times in T2
+        #under weibull, log(-log(S(t))) = log_alpha + log_kappa + xtbeta + alpha*log(t)
+        #so, each row of J is the gradient at a particular T2 wrt logalpha, logkappa, beta1, ..., betap
+        J <- cbind(1, exp(log_alpha) * log(T2),
+                   matrix(x2new, nrow = length(T2), ncol = length(x2new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.2 <- J %*% obj$Finv[c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2])),
+                                        c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2]))] %*% t(J)
+      } else if (is.null(x2new) | nP[2] == 0) {
+        J <- cbind(1, exp(log_alpha) * log(T2))
+        Var.loglogS.2 <- J %*% obj$Finv[(1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0[1]):(nP0[1]+nP0[2])] %*% t(J)
+      }
+
+      h.2 <- alpha * kappa * (T2)^(alpha - 1) * exp(eta2)
+      #hazard is exp(logalpha) * exp(logkappa) * t^(exp(logalpha)-1) * exp(xtbeta)
+      #so, each row of J is gradient wrt logkappa, logalpha, beta1, ..., betap
+      #WHY ISNT EVERYTHING MULTIPLIED BY exp(xtbeta) ? seems like it should be. I'm gonna add it
+      if(all(is.na(obj$Finv))){
+        Var.h.2 <- NA
+      } else if (!is.null(x2new) & nP[2] > 0) {
+        J <- cbind(h.2, h.2 * (1 + alpha * log(T2)), h.2 *
+                     matrix(x2new, nrow = length(T2), ncol = length(x2new), byrow = T))
+        Var.h.2 <- J %*% obj$Finv[c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2])),
+                                  c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2]))] %*% t(J)
+      }
+      else if (is.null(x2new) | nP[2] == 0) {
+        J <- cbind(h.2, h.2 * (1 + alpha * log(T2)))
+        Var.h.2 <- J %*% obj$Finv[(1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0[1]):(nP0[1]+nP0[2])] %*% t(J)
+      }
+    } else{ #for now the only alternative we entertain is piecewise constant
+      stopifnot(obj$class[4] == "Piecewise Constant")
+      basis2 <- get_basis(x = T2,knots = obj$knots_list[[2]],hazard = "piecewise")
+      phi2 <- obj$estimate[(1+nP0[1]):(nP0[1]+nP0[2])]
+      Lambda02 <- as.vector(basis2 %*% exp(phi2))
+      S.2 <- exp(-Lambda02*exp(eta2))
+      #Use delta method to compute baseline survival confidence intervals
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.2 <- NA
+      } else if (!is.null(x2new) & nP[2] > 0) {
+        #matrix with as many columns as parameters in S1, and as many rows as times in T2
+        #under piecewise, log(-log(S(t))) = log( basis1 %*% exp(phi1)) + log(xtbeta)
+        #so, each row of J is the gradient at a particular T2 wrt phi1, ..., phiK, beta1, ..., betap
+        J <- cbind(
+          #first, this multiplies every row of basis1 by exp(phi1),
+          #then, this divides every column of the resulting matrix by the vector Lambda01
+          t(t(basis2) * exp(phi2)) / Lambda02,
+          matrix(x2new, nrow = length(T2), ncol = length(x2new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.2 <- J %*% obj$Finv[c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2])),
+                                        c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2]))] %*%
+          t(J)
+      } else if (is.null(x2new) | nP[2] == 0) {
+        J <- t(t(basis2) * exp(phi2)) / Lambda02
+        Var.loglogS.2 <- J %*% obj$Finv[(1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0[1]):(nP0[1]+nP0[2])] %*% t(J)
+      }
+
+      #Use delta method compute baseline hazard confidence intervals
+      #vector saying which interval each time falls into
+      cut_cats2 <- rowSums(basis2!=0)
+      if(T2[1]==0){cut_cats2[1] <- 1}
+      stopifnot(length(cut_cats2)==length(T2))
+      h.2 <- exp(phi2)[cut_cats2] * exp(eta2)
+      #build a matrix with 0's everywhere, except on ith row, set column that T2i falls in to 1
+      temp_mat <- matrix(data=0,nrow=length(T2),ncol=nP0[2])
+      temp_mat[cbind(1:length(T2),cut_cats2)] <- 1
+      temp_mat <- t(t(temp_mat) * exp(phi2))
+
+      if(all(is.na(obj$Finv))){
+        Var.h.2 <- NA
+      } else if (!is.null(x2new) & nP[2] > 0) {
+        J <- cbind(temp_mat * exp(eta2), h.2 *
+                     matrix(x2new, nrow = length(T2), ncol = length(x2new), byrow = T))
+        Var.h.2 <- J %*% obj$Finv[c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2])),
+                                  c((1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0_tot + nP[1]):(nP0_tot + nP[1] + nP[2]))] %*% t(J)
+      }
+      else if (is.null(x2new) | nP[2] == 0) {
+        J <- temp_mat * exp(eta2)
+        Var.h.2 <- J %*% obj$Finv[(1+nP0[1]):(nP0[1]+nP0[2]), (1+nP0[1]):(nP0[1]+nP0[2])] %*% t(J)
+      }
+    }
+    if(all(is.na(Var.loglogS.2))){
+      se.loglogS.2 <- NA
+    } else{
+      se.loglogS.2 <- sqrt(diag(Var.loglogS.2))
+      se.loglogS.2[is.nan(se.loglogS.2)] <- 0
+    }
+    LL.2 <- S.2^exp(-qnorm(conf.level/2) * se.loglogS.2)
+    UL.2 <- S.2^exp(qnorm(conf.level/2) * se.loglogS.2)
+    if(all(is.na(Var.h.2))){
+      se.h.2 <- NA
+    } else{
+      se.h.2 <- sqrt(diag(Var.h.2))
+      se.h.2[is.nan(se.h.2)] <- 0
+    }
+    LLh.2 <- h.2 + qnorm(conf.level/2) * se.h.2 #sign reversed because 0.025 quantile is negative
+    ULh.2 <- h.2 - qnorm(conf.level/2) * se.h.2
+    LLh.2[LLh.2 < 0] <- 0
+
+    #THIRD TRANSITION
+    if(obj$class[4] == "Weibull"){
+      kappa <- exp(obj$estimate[5])
+      alpha <- exp(obj$estimate[6])
+      log_alpha <- obj$estimate[6]
+      S.3 <- exp(-kappa * (T2)^alpha) * exp(eta3)
+      #Use delta method to compute baseline survival confidence intervals
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.3 <- NA
+      } else if(!is.null(x3new) & nP[3] > 0) {
+        #matrix with as many columns as parameters in S3, and as many rows as times in T2
+        #under weibull, log(-log(S(t))) = log_alpha + log_kappa + xtbeta + alpha*log(t)
+        #so, each row of J is the gradient at a particular T2 wrt logalpha, logkappa, beta1, ..., betap
+        J <- cbind(1, exp(log_alpha) * log(T2),
+                   matrix(x3new, nrow = length(T2), ncol = length(x3new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.3 <- J %*% obj$Finv[c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3])),
+                                        c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3]))] %*% t(J)
+      } else if (is.null(x3new) | nP[2] == 0) {
+        J <- cbind(1, exp(log_alpha) * log(T2))
+        Var.loglogS.3 <- J %*% obj$Finv[(1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3])] %*% t(J)
+      }
+
+      h.3 <- alpha * kappa * (T2)^(alpha - 1) * exp(eta3)
+      #hazard is exp(logalpha) * exp(logkappa) * t^(exp(logalpha)-1) * exp(xtbeta)
+      #so, each row of J is gradient wrt logkappa, logalpha, beta1, ..., betap
+      #kyu has code does not multiply the variances by exp(xtbeta), which it seems like it should be. I'm gonna add it
+      if(all(is.na(obj$Finv))){
+        Var.h.3 <- NA
+      } else if (!is.null(x3new) & nP[3] > 0) {
+        J <- cbind(h.3, h.3 * (1 + alpha * log(T2)), h.3 *
+                     matrix(x3new, nrow = length(T2), ncol = length(x3new), byrow = T))
+        Var.h.3 <- J %*% obj$Finv[c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3])),
+                                  c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3]))] %*% t(J)
+      }
+      else if (is.null(x3new) | nP[2] == 0) {
+        J <- cbind(h.3, h.3 * (1 + alpha * log(T2)))
+        Var.h.3 <- J %*% obj$Finv[(1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3])] %*% t(J)
+      }
+    } else{ #for now the only alternative we entertain is piecewise constant
+      stopifnot(obj$class[4] == "Piecewise Constant")
+      basis3 <- get_basis(x = T2,knots = obj$knots_list[[3]],hazard = "piecewise")
+      phi3 <- obj$estimate[(1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3])]
+      Lambda03 <- as.vector(basis3 %*% exp(phi3))
+      S.3 <- exp(-Lambda03*exp(eta3))
+      #Use delta method to compute baseline survival confidence intervals
+      if(all(is.na(obj$Finv))){
+        Var.loglogS.3 <- NA
+      } else if (!is.null(x3new) & nP[3] > 0) {
+        #matrix with as many columns as parameters in S1, and as many rows as times in T2
+        #under piecewise, log(-log(S(t))) = log( basis1 %*% exp(phi1)) + log(xtbeta)
+        #so, each row of J is the gradient at a particular T2 wrt phi1, ..., phiK, beta1, ..., betap
+        J <- cbind(
+          #first, this multiplies every row of basis1 by exp(phi1),
+          #then, this divides every column of the resulting matrix by the vector Lambda01
+          t(t(basis3) * exp(phi3)) / Lambda03,
+          matrix(x3new, nrow = length(T2), ncol = length(x3new), byrow = T))
+        #vector with as many elements as times in T2
+        Var.loglogS.3 <- J %*% obj$Finv[c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3])),
+                                        c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3]))] %*%
+          t(J)
+      } else if (is.null(x3new) | nP[3] == 0) {
+        J <- t(t(basis3) * exp(phi3)) / Lambda03
+        Var.loglogS.3 <- J %*% obj$Finv[(1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3])] %*% t(J)
+      }
+
+      #Use delta method compute baseline hazard confidence intervals
+      #vector saying which interval each time falls into
+      cut_cats3 <- rowSums(basis3!=0)
+      if(T2[1]==0){cut_cats3[1] <- 1}
+      stopifnot(length(cut_cats3)==length(T2))
+      h.3 <- exp(phi3)[cut_cats3] * exp(eta3)
+      #build a matrix with 0's everywhere, except on ith row, set column that T2i falls in to 1
+      temp_mat <- matrix(data=0,nrow=length(T2),ncol=nP0[3])
+      temp_mat[cbind(1:length(T2),cut_cats3)] <- 1
+      temp_mat <- t(t(temp_mat) * exp(phi3))
+
+      if(all(is.na(obj$Finv))){
+        Var.h.3 <- NA
+      } else if (!is.null(x3new) & nP[3] > 0) {
+        J <- cbind(temp_mat * exp(eta3), h.3 *
+                     matrix(x3new, nrow = length(T2), ncol = length(x3new), byrow = T))
+        Var.h.3 <- J %*% obj$Finv[c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3])),
+                                  c((1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0_tot+nP[1]+nP[2]):(nP0_tot+nP[1]+nP[2]+nP[3]))] %*% t(J)
+      }
+      else if (is.null(x3new) | nP[3] == 0) {
+        J <- temp_mat * exp(eta3)
+        Var.h.3 <- J %*% obj$Finv[(1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3]), (1+nP0[1]+nP0[2]):(nP0[1]+nP0[2]+nP0[3])] %*% t(J)
+      }
+    }
+    if(all(is.na(Var.loglogS.3))){
+      se.loglogS.3 <- NA
+    } else{
+      se.loglogS.3 <- sqrt(diag(Var.loglogS.3))
+      se.loglogS.3[is.nan(se.loglogS.3)] <- 0
+    }
+    LL.3 <- S.3^exp(-qnorm(conf.level/2) * se.loglogS.3)
+    UL.3 <- S.3^exp(qnorm(conf.level/2) * se.loglogS.3)
+    if(all(is.na(Var.h.3))){
+      se.h.3 <- NA
+    } else{
+      se.h.3 <- sqrt(diag(Var.h.3))
+      se.h.3[is.nan(se.h.3)] <- 0
+    }
+    LLh.3 <- h.3 + qnorm(conf.level/2) * se.h.3 #sign reversed because 0.025 quantile is negative
+    ULh.3 <- h.3 - qnorm(conf.level/2) * se.h.3
+    LLh.3[LLh.3 < 0] <- 0
+
+    T2h <- T2
+    if (T2[1] == 0) {
+      T2h <- T2h[-1]
+      h.1 <- h.1[-1]
+      LLh.1 <- LLh.1[-1]
+      ULh.1 <- ULh.1[-1]
+      h.2 <- h.2[-1]
+      LLh.2 <- LLh.2[-1]
+      ULh.2 <- ULh.2[-1]
+      h.3 <- h.3[-1]
+      LLh.3 <- LLh.3[-1]
+      ULh.3 <- ULh.3[-1]
+    }
+    BH1_tbl <- data.frame(time = T2h, h.1 = h.1, LL.1 = LLh.1,
+                          UL.1 = ULh.1)
+    BH2_tbl <- data.frame(time = T2h, h.2 = h.2, LL.2 = LLh.2,
+                          UL.2 = ULh.2)
+    BH3_tbl <- data.frame(time = T2h, h.3 = h.3, LL.3 = LLh.3,
+                          UL.3 = ULh.3)
+    BS1_tbl <- data.frame(time = T2, S.1 = S.1, LL.1 = LL.1,
+                          UL.1 = UL.1)
+    BS2_tbl <- data.frame(time = T2, S.2 = S.2, LL.2 = LL.2,
+                          UL.2 = UL.2)
+    BS3_tbl <- data.frame(time = T2, S.3 = S.3, LL.3 = LL.3,
+                          UL.3 = UL.3)
+    value <- list(h.1 = BH1_tbl, h.2 = BH2_tbl, h.3 = BH3_tbl,
+                  S.1 = BS1_tbl, S.2 = BS2_tbl, S.3 = BS3_tbl)
+  }
+  value$xnew <- xnew
+  value$x1new <- x1new
+  value$x2new <- x2new
+  value$x3new <- x3new
+  value$tseq <- tseq
+  value$setup$model <- obj$setup$model
+  value$class <- obj$class
+  class(value) <- "pred.Freq_HReg2"
+  return(value)
+}
+
+plot.pred.Freq_HReg2 <- function (x, plot.est = "Haz", xlab = NULL, ylab = NULL, ...)
+{
+  obj <- x
+  T2seq <- x$tseq
+  yLim <- NULL
+  if (obj$class[2] == "ID") {
+    if (is.null(ylab)) {
+      if (plot.est == "Surv") {
+        ylab <- "Survival"
+      }
+      if (plot.est == "Haz") {
+        ylab <- "Hazard"
+      }
+    }
+    if (is.null(xlab)) {
+      xlab <- c("Time", "Time", "Time")
+      if (obj$class[5] == "semi-Markov") {
+        xlab[3] <- "Time since non-terminal event"
+      }
+    }
+    if (is.null(yLim)) {
+      if (plot.est == "Surv") {
+        yLim <- seq(from = 0, to = 1, by = 0.2)
+      }
+      if (plot.est == "Haz") {
+        ygrid <- (max(x$h.1$h.1,x$h.2$h.2,x$h.3$h.3,
+                      x$h.1$UL.1, x$h.2$UL.2, x$h.3$UL.3,na.rm = TRUE) -
+                    0)/5
+        yLim <- seq(from = 0, to = max(x$h.1$h.1,x$h.2$h.2,x$h.3$h.3,
+                                       x$h.1$UL.1, x$h.2$UL.2, x$h.3$UL.3,na.rm = TRUE), by = ygrid)
+      }
+    }
+    if (plot.est == "Surv") {
+      par(mfrow = c(1, 3))
+      plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               S[1](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = yLim)
+      lines(obj$S.1$time, obj$S.1$S.1, col = "blue", lwd = 3)
+      lines(obj$S.1$time, obj$S.1$LL.1, col = "blue", lwd = 3,
+            lty = 3)
+      lines(obj$S.1$time, obj$S.1$UL.1, col = "blue", lwd = 3,
+            lty = 3)
+      plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               S[2](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = yLim)
+      lines(obj$S.2$time, obj$S.2$S.2, col = "red", lwd = 3)
+      lines(obj$S.2$time, obj$S.2$LL.2, col = "red", lwd = 3,
+            lty = 3)
+      lines(obj$S.2$time, obj$S.2$UL.2, col = "red", lwd = 3,
+            lty = 3)
+      plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               S[3](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = yLim)
+      lines(obj$S.3$time, obj$S.3$S.3, col = "red", lwd = 3)
+      lines(obj$S.3$time, obj$S.3$LL.3, col = "red", lwd = 3,
+            lty = 3)
+      lines(obj$S.3$time, obj$S.3$UL.3, col = "red", lwd = 3,
+            lty = 3)
+    }
+    if (plot.est == "Haz") {
+      par(mfrow = c(1, 3))
+      plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               h[1](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = round(yLim, 4))
+      lines(obj$h.1$time, obj$h.1$h.1, col = "blue", lwd = 3)
+      lines(obj$h.1$time, obj$h.1$LL.1, col = "blue", lwd = 3,
+            lty = 3)
+      lines(obj$h.1$time, obj$h.1$UL.1, col = "blue", lwd = 3,
+            lty = 3)
+      plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               h[2](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = round(yLim, 4))
+      lines(obj$h.2$time, obj$h.2$h.2, col = "red", lwd = 3)
+      lines(obj$h.2$time, obj$h.2$LL.2, col = "red", lwd = 3,
+            lty = 3)
+      lines(obj$h.2$time, obj$h.2$UL.2, col = "red", lwd = 3,
+            lty = 3)
+      plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
+           type = "n", main = expression(paste("Estimated ",
+                                               h[3](t), "")), axes = FALSE)
+      axis(1, at = T2seq)
+      axis(2, at = round(yLim, 4))
+      lines(obj$h.3$time, obj$h.3$h.3, col = "red", lwd = 3)
+      lines(obj$h.3$time, obj$h.3$LL.3, col = "red", lwd = 3,
+            lty = 3)
+      lines(obj$h.3$time, obj$h.3$UL.3, col = "red", lwd = 3,
+            lty = 3)
+    }
+  }
+  invisible()
+}
