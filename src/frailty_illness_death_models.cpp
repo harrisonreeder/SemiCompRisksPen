@@ -138,8 +138,8 @@ double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const a
 
 	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1)) 
 	+ (1-delta1) % delta2 % ( arma::log(s2prime) + s2 + eta2 - arma::log(y1) )
-	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - logdiff + log( 1 + exp(h) )  )
-	- (exp(-h) + delta1 + delta2) % arma::log( 1 + exp(h) * AVec )  ) ;
+	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - logdiff + log1p( exp(h) )  )
+	- (exp(-h) + delta1 + delta2) % arma::log1p( exp(h) * AVec )  ) ;
 
   return -obj_val;    
 }
@@ -202,8 +202,8 @@ double nlogLikRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const ar
 
 	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1) ) 
 	+ (1-delta1) % delta2 % ( arma::log(s2prime) + s2 + eta2 - arma::log(y1) )
-	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - arma::log(y2) + log( 1 + exp(h) )  )
-	- (exp(-h) + delta1 + delta2) % arma::log( 1 + exp(h) * AVec )  ) ;
+	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - arma::log(y2) + log1p( exp(h) )  )
+	- (exp(-h) + delta1 + delta2) % arma::log1p( exp(h) * AVec )  ) ;
 
   return -obj_val;    
 }
@@ -277,7 +277,7 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 														delta1 % commonVec % arma::exp(h + s3 + eta3) );  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2-y1). Helps make it more robust
 
 	//h
-	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
+	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
@@ -374,7 +374,7 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 
 
 	//h
-	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
+	temp_scorevec(p01 + p02 + p03) = arma::accu( exp(h)*( delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec ));
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
@@ -476,14 +476,14 @@ double nlogLikWB_ID_frail(const arma::vec& para,
 	//this is the slow way of writing it, I could simplify to make this a bit quicker
 	arma::vec LL1 = delta1 % delta2 % (  a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1 
 									   + a3 + k3 + (exp(a3) - 1) * logdiff       + eta3
-									   + log(1+ exp(h)) //added because I think it's missing
-									   - (exp(-h) + 2) * arma::log(1 + exp(h) * AVec)
+									   + log1p(exp(h)) //added because I think it's missing
+									   - (exp(-h) + 2) * arma::log1p(exp(h) * AVec)
 									  ); //LL1
 	arma::vec LL3 = delta1 % (1-delta2) % (a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1 
-											- (exp(-h)+1) * arma::log(1 + exp(h) * AVec)); //LL3	;
+											- (exp(-h)+1) * arma::log1p(exp(h) * AVec)); //LL3	;
 	arma::vec LL2 = (1-delta1) % delta2 % (a2 + k2 + (exp(a2) - 1) * arma::log(y1) + eta2 
-											- (exp(-h)+1) * arma::log(1 + exp(h) * AVec)); // LL 2
-	arma::vec LL4 = (1-delta1) % (1-delta2) % (-exp(-h) * arma::log(1 + exp(h) * AVec)); // LL4
+											- (exp(-h)+1) * arma::log1p(exp(h) * AVec)); // LL 2
+	arma::vec LL4 = (1-delta1) % (1-delta2) % (-exp(-h) * arma::log1p(exp(h) * AVec)); // LL4
 
     double obj_val = arma::accu( LL1 + LL2 + LL3 + LL4);
     return -obj_val;
@@ -557,7 +557,7 @@ arma::vec ngradWB_ID_frail_SM(const arma::vec& para,
 	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * logdiff) - 
 									commonVec % Lambda03 % arma::exp(h+a3+eta3) % logdiff );
 	//h (what ina calls u1)
-	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec));
+	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec));
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
@@ -642,7 +642,7 @@ arma::vec ngradWB_ID_frail_M(const arma::vec& para,
 	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) - 
 									commonVec % arma::exp(h+a3+eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) );
 	//h (what ina calls u1)
-	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec));
+	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec));
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
@@ -827,7 +827,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 								  + (delta1 - AVec + delta2) / (arma::pow(AVec * exp(h) + 1 , 2))
 								  + delta1 % delta2 / (exp(h) + 1)
 								  - delta1 % delta2 / (pow(exp(h) + 1, 2))
-								  - exp(-h) * arma::log(AVec * exp(h) + 1)
+								  - exp(-h) * arma::log1p(AVec * exp(h))
 								  );	
 	//ha1
 	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) - 
@@ -1135,7 +1135,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 								  + (delta1 - AVec + delta2) / (arma::pow(AVec * exp(h) + 1 , 2))
 								  + delta1 % delta2 / (exp(h) + 1)
 								  - delta1 % delta2 / (pow(exp(h) + 1, 2))
-								  - exp(-h) * arma::log(AVec * exp(h) + 1)
+								  - exp(-h) * arma::log1p(AVec * exp(h))
 								  );	
 	//ha1
 	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) - 
@@ -1338,7 +1338,7 @@ arma::mat ngradWB_ID_frail_mat_SM(const arma::vec& para,
 	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * logdiff) - 
 									commonVec % Lambda03 % arma::exp(h+a3+eta3) % logdiff;
 	//h (what ina calls u1)
-	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec);
+	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec);
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
@@ -1425,7 +1425,7 @@ arma::mat ngradWB_ID_frail_mat_M(const arma::vec& para,
 	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) - 
 									commonVec % arma::exp(h+a3+eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) ;
 	//h (what ina calls u1)
-	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec);
+	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec);
 
 	//beta1 (what ina calls u2)
 	if(p1 > 0){

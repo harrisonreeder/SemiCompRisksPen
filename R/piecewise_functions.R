@@ -78,8 +78,8 @@ nlogLikPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
   ll <- sum(
     delta1 * (log(haz01) + eta1) +
       (1-delta1)*delta2*(log(haz02) + eta2) +
-      delta1*delta2*(log(haz03) + eta3 + log(1 + theta)) -
-      (theta^(-1) + delta1 + delta2)* as.vector(log(1 + theta*(Lambda01*exp(eta1) +
+      delta1*delta2*(log(haz03) + eta3 + log1p(theta)) -
+      (theta^(-1) + delta1 + delta2)* as.vector(log1p(theta*(Lambda01*exp(eta1) +
                                                                  Lambda02*exp(eta2) +
                                                                  Lambda03*exp(eta3)
       )
@@ -164,8 +164,8 @@ nlogLikPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
   ll <- sum(
     delta1 * (log(haz01) + eta1) +
       (1-delta1)*delta2*(log(haz02) + eta2) +
-      delta1*delta2*(log(haz03) + eta3 + log(1 + theta)) -
-      (theta^(-1) + delta1 + delta2)* as.vector(log(1 + theta*(Lambda01*exp(eta1) +
+      delta1*delta2*(log(haz03) + eta3 + log1p(theta)) -
+      (theta^(-1) + delta1 + delta2)* as.vector(log1p(theta*(Lambda01*exp(eta1) +
                                                                  Lambda02*exp(eta2) +
                                                                  Lambda03*exp(eta3)
       )
@@ -273,7 +273,7 @@ ngradPW_ID_frail_SM <- function(para, y1, y2, delta1, delta2,
   score_phi3 <- temp_val - as.vector(  t(Lambda03Phi) %*% (commonVec * exp(h + eta3)) )
 
   #h (what ina calls u1)
-  score_h <- sum(exp(h)*(delta1 * delta2/(1+exp(h)) + log(1+exp(h) * AVec)/exp(2*h) - commonVec * AVec))
+  score_h <- sum(exp(h)*(delta1 * delta2/(1+exp(h)) + log1p(exp(h) * AVec)/exp(2*h) - commonVec * AVec))
 
   #beta1 (what ina calls u2)
   if(nP1 == 0){ score_beta1 <- NULL } else{
@@ -392,7 +392,7 @@ ngradPW_ID_frail_M <- function(para, y1, y2, delta1, delta2,
   score_phi3 <- temp_val - as.vector(  t(Lambda03Phi) %*% (commonVec * exp(h + eta3)) )
 
   #h (what ina calls u1)
-  score_h <- sum(exp(h)*(delta1 * delta2/(1+exp(h)) + log(1+exp(h) * AVec)/exp(2*h) - commonVec * AVec))
+  score_h <- sum(exp(h)*(delta1 * delta2/(1+exp(h)) + log1p(exp(h) * AVec)/exp(2*h) - commonVec * AVec))
 
   #beta1 (what ina calls u2)
   if(nP1 == 0){ score_beta1 <- NULL } else{
