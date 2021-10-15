@@ -13,6 +13,10 @@ forward_selection(
   frailty = TRUE,
   model,
   knots_list = NULL,
+  fixed1 = character(0),
+  fixed2 = character(0),
+  fixed3 = character(0),
+  optim_method = "L-BFGS",
   select_crit = "bic",
   verbose = 0,
   control = NULL
@@ -38,6 +42,14 @@ be included. Currently this must be set to TRUE.}
 list of three increasing sequences of integers, each corresponding to
 the knots for the flexible model on the corresponding transition baseline hazard. If
 \code{NULL}, will be created by \code{\link{get_default_knots_list}}.}
+
+\item{fixed1}{a string vector for parameters you want guaranteed included in arm 1}
+
+\item{fixed2}{a string vector for parameters you want guaranteed included in arm 2}
+
+\item{fixed3}{a string vector for parameters you want guaranteed included in arm 3}
+
+\item{optim_method}{a string naming which \code{optim} method should be used.}
 
 \item{select_crit}{a string indicating what criterion should be used to determine whether a covariate should be added.}
 
