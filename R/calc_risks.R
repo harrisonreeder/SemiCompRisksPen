@@ -1,4 +1,4 @@
-#' Calculate Weibull absolute risk profiles
+#' Calculate absolute risk profiles
 #'
 #' This function calculates absolute risk profiles under weibull baseline hazard specifications.
 #'
@@ -10,15 +10,17 @@
 #'   or 'conditional' for probabilities computed at the specified gamma
 #' @param gamma Numeric value indicating the fixed level of the frailty assumed for predicted probabilities,
 #'   if 'type' is set to 'conditional'
+#' @param h3_tv String indicating whether there is an effect of t1 on hazard 3.
+#' @param tv_knots for piecewise effect of t1 in h3, these are the knots at which the effect jumps
 #'
 #' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
 #'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
 #'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
 #' @export
-calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
+calc_risk <- function(para, Xmat1, Xmat2, Xmat3,hazard,knots_list=NULL,
                          t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
-                         type="marginal", gamma=1,
-                         model="semi-markov"){
+                         type="marginal", gamma=1,model="semi-markov",
+                         h3_tv="none",tv_knots=NULL){
   #notice reduced default tolerance
   # browser()
   ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
@@ -26,316 +28,29 @@ calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
 
   n <- max(1,nrow(Xmat1),nrow(Xmat2),nrow(Xmat3))
   t_length <- length(t_cutoff)
+  #standardize namings for the use of "switch" below
+  stopifnot(tolower(hazard) %in% c("wb","weibull","pw","piecewise"))
+  hazard <- switch(tolower(hazard),
+    wb="weibull",weibull="weibull",pw="piecewise",piecewise="piecewise")
+  stopifnot(tolower(type) %in% c("c","conditional","m","marginal"))
+  type <- switch(tolower(type),
+    c="conditional",conditional="conditional",m="marginal",marginal="marginal")
+  stopifnot(tolower(model) %in% c("sm","semi-markov","m","markov"))
+  model <- switch(tolower(model),
+    sm="semi-markov","semi-markov"="semi-markov",m="markov",markov="markov")
 
-  if(frailty){
-    nP0 <- 7
-    theta <- exp(para[7])
-    if(type=="conditional" & length(gamma)==1){
-      gamma <- rep(gamma,n)
-    }
+  if(hazard == "weibull"){
+    nP01 <- nP02 <- nP03 <- 2
   } else{
-    nP0 <- 6
-    type <- "conditional"
-    gamma <- rep(1,n)
+    stopifnot(!is.null(knots_list))
+    #left pad with a zero if it is not already present
+    if(knots_list[[1]][1] != 0){knots_list[[1]] <- c(0,knots_list[[1]])}
+    if(knots_list[[2]][1] != 0){knots_list[[2]] <- c(0,knots_list[[2]])}
+    if(knots_list[[3]][1] != 0){knots_list[[3]] <- c(0,knots_list[[3]])}
+    nP01 <- length(knots_list[[1]])
+    nP02 <- length(knots_list[[2]])
+    nP03 <- length(knots_list[[3]])
   }
-
-  if(!is.null(Xmat1) && !(ncol(Xmat1)==0)){
-    nP1 <- ncol(Xmat1)
-    beta1 <- para[(1+nP0):(nP0+nP1)]
-    eta1 <- as.vector(Xmat1 %*% beta1)
-  } else{
-    nP1 <- 0
-    eta1 <- 0
-  }
-  if(!is.null(Xmat2) && !(ncol(Xmat2)==0)){
-    nP2 <- ncol(Xmat2)
-    beta2 <- para[(1+nP0+nP1):(nP0+nP1+nP2)]
-    eta2 <- as.vector(Xmat2 %*% beta2)
-  } else{
-    nP2 <- 0
-    eta2 <- 0
-  }
-  if(!is.null(Xmat3) && !(ncol(Xmat3)==0)){
-    nP3 <- ncol(Xmat3)
-    beta3 <- para[(1+nP0+nP1+nP2):(nP0+nP1+nP2+nP3)]
-    eta3 <- as.vector(Xmat3 %*% beta3)
-  } else{
-    nP3 <- 0
-    eta3 <- 0
-  }
-
-
-  stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
-  alpha1=exp(para[2])
-  alpha2=exp(para[4])
-  alpha3=exp(para[6])
-  kappa1=exp(para[1])
-  kappa2=exp(para[3])
-  kappa3=exp(para[5])
-
-  ##NOW, USE THE ESTIMATES TO COMPUTE THE PREDICTIONS##
-  ##*************************************************##
-
-  #first, compute some helper quantities
-  #note this might crap out if there are no covariates in an arm?
-  h1_const=alpha1 * kappa1 * exp(eta1)
-  h2_const=alpha2 * kappa2 * exp(eta2)
-  h3_const=alpha3 * kappa3 * exp(eta3)
-  H1_const=kappa1 * exp(as.vector(eta1))
-  H2_const=kappa2 * exp(as.vector(eta2))
-  H3_const=kappa3 * exp(as.vector(eta3))
-  alpha1_m1=alpha1 - 1
-  alpha2_m1=alpha2 - 1
-  alpha3_m1=alpha3 - 1
-
-  ##*****************************************************************##
-  ## Calculating posterior predictive density for WB baseline hazard ##
-  ##*****************************************************************##
-
-  #First, write functions that compute the integrand, which we feed into integration function
-  #the univariate function when T1=infinity
-  if(tolower(type) %in% c("marginal","m")){
-    f_t2 <- function(t2, index){
-      h2_const[index] * (t2)^alpha2_m1 *
-        (1 + theta*(H1_const[index] * (t2)^alpha1 +
-                      H2_const[index] * (t2)^alpha2) )^(-theta^(-1) - 1)
-    }
-  } else{
-    f_t2 <- function(t2, index){
-      gamma[index] * h2_const[index] * (t2)^alpha2_m1 *
-        exp(-gamma[index]*(H1_const[index] * (t2)^alpha1 +
-                             H2_const[index] * (t2)^alpha2))
-    }
-  }
-
-  #next, the different regions of the joint density on the upper triangle
-  # here is the generic (semi-markov) formula if we pre-integrate t2 from u to v
-  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)]) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
-  # here is the generic (markov) formula if we pre-integrate t2 from u to v
-  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)-\Lambda_3(t_1)]) \left[\exp(-\Lambda_3(u)) - \exp(-\Lambda_3(v))\right] dt_1
-
-  #if we pre-integrate t2 from t1 to infinity
-  if(tolower(type) %in% c("marginal","m")){
-    f_joint_t1_neither <- function(time_pt1,index){
-      h1_const[index] * time_pt1^alpha1_m1 *
-        (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                      H2_const[index] * time_pt1^alpha2) )^(-theta^(-1) - 1)
-    }
-  } else{
-    f_joint_t1_neither <- function(time_pt1,index){
-      gamma[index]*h1_const[index] * time_pt1^alpha1_m1 *
-        exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 +
-                              H2_const[index] * time_pt1^alpha2) )
-    }
-  }
-
-
-  if(tolower(model) == "semi-markov"){
-
-    #if we pre-integrate t2 from t1 to t_cutoff
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        h1_const[index] * time_pt1^alpha1_m1 * (
-          (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                        H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
-            (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                          H2_const[index] * time_pt1^alpha2 +
-                          H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
-        )}
-    } else{
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
-                    exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
-                  ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff - time_pt1)^alpha3))
-      }
-    }
-
-    #if we pre-integrate t2 from t_cutoff to infinity
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        h1_const[index] * time_pt1^alpha1_m1 *
-                    (1 + theta * (H1_const[index] * time_pt1^alpha1 +
-                                           H2_const[index] * time_pt1^alpha2 +
-                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))^(-theta^(-1)-1)
-      }
-    } else{
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
-                    exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
-                                           H2_const[index] * time_pt1^alpha2 +
-                                           H3_const[index] * (t_cutoff - time_pt1)^alpha3))
-      }
-    }
-
-  } else{ #MARKOV SPECIFICATIONS (if you do the derivations, amounts to changing H(t-t_1) to H(t)-H(t_1) everywhere)
-
-    #if we pre-integrate t2 from t1 to t_cutoff
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        h1_const[index] * time_pt1^alpha1_m1 * (
-          (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                        H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
-            (1 + theta*(H1_const[index] * time_pt1^alpha1 +
-                          H2_const[index] * time_pt1^alpha2 +
-                          H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))^(-theta^(-1)-1)
-        )}
-    } else{
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
-          exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
-          ( 1 - exp( -gamma[index] * H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))
-      }
-    }
-
-
-    #if we pre-integrate t2 from t_cutoff to infinity
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        h1_const[index] * time_pt1^alpha1_m1 *
-          (1 + theta * (H1_const[index] * time_pt1^alpha1 +
-                          H2_const[index] * time_pt1^alpha2 +
-                          H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))^(-theta^(-1)-1)
-      }
-    } else{
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
-          exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
-                                 H2_const[index] * time_pt1^alpha2 +
-                                 H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)))
-      }
-    }
-
-  }
-
-
-  #If we are computing 'dynamic probabilities' updated to some later timepoint t_start,
-  #then we need to compute the probability of having experienced the event by t_start.
-  #This is easier for 'neither' and 'tonly' outcomes because the inner integral does not depend on t_start.
-  if(t_start > 0){
-    p_neither_t2_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_start, upper=Inf, index=x)$value,
-                                                    error=function(cnd){return(NA)}) })
-
-    p_neither_joint_start <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_start, upper=Inf, index=x)$value,
-                                                        error=function(cnd){return(NA)}) })
-
-    p_tonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_start, index=x)$value,
-                                               error=function(cnd){return(NA)}) })
-    p_neither_start <- p_neither_t2_start + p_neither_joint_start
-  } else{
-    p_tonly_start <- 0
-    p_neither_start <- 1
-  }
-
-
-
-  if(n > 1){
-    if(t_length > 1){
-      out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither"),paste0("i",1:n)))
-    } else{
-      out_mat <- matrix(nrow=n,ncol=4,dimnames = list(paste0("i",1:n),c("p_ntonly","p_both","p_tonly","p_neither")))
-    }
-  } else{
-      out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither")))
-  }
-
-  for(t_ind in 1:t_length){
-    p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
-                                               error=function(cnd){return(NA)}) })
-
-    p_neither_t2 <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
-                                                    error=function(cnd){return(NA)}) })
-
-    p_neither_joint <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
-                                                        error=function(cnd){return(NA)}) })
-
-    p_both <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
-                                                        t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                              error=function(cnd){return(NA)}) })
-
-    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
-                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                error=function(cnd){return(NA)}) })
-    #to compute 'dynamic probabilities' updated for a non-zero start value t_start
-    #we need to compute a second integral for the probability up to time t_start and
-    #then subtract it off. The mathematical details are written in the paper.
-    if(t_start > 0){
-      p_both_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_start,
-                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                error=function(cnd){return(NA)}) })
-
-      p_ntonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_start,
-                                                                   t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                  error=function(cnd){return(NA)}) })
-    } else{
-      p_both_start <- p_ntonly_start <- 0
-    }
-
-    out_temp <- cbind(p_ntonly=(p_ntonly-p_ntonly_start)/p_neither_start,
-                      p_both=(p_both-p_both_start)/p_neither_start,
-                      p_tonly=(p_tonly-p_tonly_start)/p_neither_start,
-                      p_neither=(p_neither_t2 + p_neither_joint)/p_neither_start)
-
-    #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
-    #from the other categories. However, we don't want any to be negative.
-    #I will also supply a warning if any of the rows are way off from 1.
-    out_temp <- t(apply(out_temp,1,
-                        function(x){
-                          if(sum(is.na(x))==1){
-                            x[is.na(x)]<- max(1-sum(x,na.rm=TRUE),0)
-                          }
-                          return(x)}))
-    if(any(is.na(out_temp)) | any(abs(1-rowSums(out_temp))>tol)){
-      warning(paste0("some predicted probabilities do not sum to within",tol,"of 1."))
-    }
-
-
-
-    if(n > 1){
-      if(t_length > 1){
-        out_mat[t_ind,,] <- t(out_temp)
-      } else{
-        out_mat <- out_temp
-      }
-    } else{
-      out_mat[t_ind,] <- out_temp
-    }
-  }
-
-  return(out_mat)
-}
-
-
-
-#' Calculate absolute risk profiles
-#'
-#' This function calculates absolute risk profiles under piecewise constant baseline hazard specifications.
-#'
-#' @inheritParams calc_risk_WB
-#' @inheritParams simID_PW
-#'
-#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
-#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
-#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
-#' @export
-calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
-                         t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
-                         type="marginal", gamma=1, model="semi-markov"){
-  #notice reduced default tolerance
-  # browser()
-  ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
-  ##*********************************************************************##
-
-  #left pad with a zero if it is not already present
-  if(knots_list[[1]][1] != 0){knots_list[[1]] <- c(0,knots_list[[1]])}
-  if(knots_list[[2]][1] != 0){knots_list[[2]] <- c(0,knots_list[[2]])}
-  if(knots_list[[3]][1] != 0){knots_list[[3]] <- c(0,knots_list[[3]])}
-
-  nP01 <- length(knots_list[[1]])
-  nP02 <- length(knots_list[[2]])
-  nP03 <- length(knots_list[[3]])
-
-  n <- max(1,nrow(Xmat1),nrow(Xmat2),nrow(Xmat3))
-  t_length <- length(t_cutoff)
 
   if(frailty){
     nP0 <- nP01 + nP02 + nP03 + 1
@@ -349,6 +64,7 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
     gamma <- rep(1,n)
   }
 
+
   if(!is.null(Xmat1) && !(ncol(Xmat1)==0)){
     nP1 <- ncol(Xmat1)
     beta1 <- para[(1+nP0):(nP0+nP1)]
@@ -374,169 +90,226 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
     eta3 <- 0
   }
 
-  stopifnot(length(para) == nP0 + nP1 + nP2 + nP3) #if the size of the parameter vector doesn't match the expected size, throw a fuss
-
-  phi1 <- as.numeric(para[(1):(nP01)])
-  phi2 <- as.numeric(para[(1+nP01):(nP01+nP02)])
-  phi3 <- as.numeric(para[(1+nP01+nP02):(nP01+nP02+nP03)])
-
-  ##NOW, USE THE ESTIMATES TO COMPUTE THE PREDICTIONS##
-  ##*************************************************##
-
-  haz <- function(t,phi,knots){
-    exp(phi)[findInterval(x=t, vec=knots, left.open=TRUE)]
-  }
-
-  Haz <- function(t,phi,knots){
-    rowSums(sweep(x=pw_cum_mat(t,knots),MARGIN=2,STATS=exp(phi),FUN ="*"))
-  }
-
-  ##*****************************************************************##
-  ## Calculating posterior predictive density for WB baseline hazard ##
-  ##*****************************************************************##
-
-
-  #First, write functions that compute the integrand, which we feed into integration function
-
-  #first, the univariate function when T1=infinity
-  if(tolower(type) %in% c("marginal","m")){
-    f_t2 <- function(t2,index){
-      haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
-        (1 + theta * (Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
-                        Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1)
-    }
+  #specify different forms by which t1 can be incorporated into h3
+  if(tolower(h3_tv) == "linear"){
+    if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
+    n_tv <- 1
+    beta3_tv_linear <- tail(para,n = n_tv)
+  } else if(tolower(h3_tv) %in% c("pw","piecewise")){
+    if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
+    stopifnot(!is.null(tv_knots))
+    if(tv_knots[1] != 0){tv_knots <- c(0,tv_knots)}
+    if(tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
+    n_tv <- length(tv_knots) - 2
+    beta3_tv <- c(0,tail(para,n=n_tv))
+    beta3_tv_linear <- 0
   } else{
-    f_t2 <- function(t2,index){
-      gamma[index] * haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
-        exp(-gamma[index]*(Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
-                             Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))
+    n_tv <- 0
+    beta3_tv_linear <- 0
+  }
+
+  #if the size of the parameter vector doesn't match the expected size, throw a fuss
+  stopifnot(length(para) == nP0 + nP1 + nP2 + nP3 + n_tv)
+
+
+  ##Set up the hazard functions##
+  ##***************************##
+  if(hazard == "weibull"){
+    alpha1=exp(para[2])
+    alpha2=exp(para[4])
+    alpha3=exp(para[6])
+    kappa1=exp(para[1])
+    kappa2=exp(para[3])
+    kappa3=exp(para[5])
+
+    #first, compute some helper quantities
+    h1_const=alpha1 * kappa1 * exp(eta1)
+    h2_const=alpha2 * kappa2 * exp(eta2)
+    h3_const=alpha3 * kappa3 * exp(eta3)
+    H1_const=kappa1 * exp(as.vector(eta1))
+    H2_const=kappa2 * exp(as.vector(eta2))
+    H3_const=kappa3 * exp(as.vector(eta3))
+    alpha1_m1=alpha1 - 1
+    alpha2_m1=alpha2 - 1
+    alpha3_m1=alpha3 - 1
+  } else{
+    phi1 <- as.numeric(para[(1):(nP01)])
+    phi2 <- as.numeric(para[(1+nP01):(nP01+nP02)])
+    phi3 <- as.numeric(para[(1+nP01+nP02):(nP01+nP02+nP03)])
+    haz <- function(t,phi,knots){
+      exp(phi)[findInterval(x=t, vec=knots, left.open=TRUE)]
+    }
+    Haz <- function(t,phi,knots){
+      rowSums(sweep(x=pw_cum_mat(t,knots),MARGIN=2,STATS=exp(phi),FUN ="*"))
     }
   }
+
+  ##******************************************##
+  ## Calculating posterior predictive density ##
+  ##******************************************##
+
+  ##First, write functions that compute the integrand,
+  ## which we feed into integration function
+  ##***********************************************##
+
+  #the univariate function when T1=infinity
+  f_t2 <- switch(hazard,
+    weibull=switch(type,
+                   marginal=function(t2, index){
+                     h2_const[index] * (t2)^alpha2_m1 *
+                       (1 + theta*(H1_const[index] * (t2)^alpha1 +
+                                     H2_const[index] * (t2)^alpha2) )^(-theta^(-1) - 1)
+                     },
+                   conditional=function(t2, index){
+                     gamma[index] * h2_const[index] * (t2)^alpha2_m1 *
+                       exp(-gamma[index]*(H1_const[index] * (t2)^alpha1 +
+                                            H2_const[index] * (t2)^alpha2))
+                     }),
+    piecewise=switch(type,
+                     marginal=function(t2, index){
+                       haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
+                         (1 + theta * (Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
+                                         Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1)
+                     },
+                     conditional=function(t2, index){
+                       gamma[index] * haz(t=t2,phi=phi2,knots=knots_list[[2]]) * exp(eta2[index]) *
+                         exp(-gamma[index]*(Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1[index]) +
+                                              Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))
+                     })
+  )
 
   #next, the different regions of the joint density on the upper triangle
+  # here is the generic (semi-markov) formula if we pre-integrate t2 from u to v
+  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)]) \left[\exp(-\Lambda_3(u-t_1)) - \exp(-\Lambda_3(v-t_1))\right] dt_1
+  # here is the generic (markov) formula if we pre-integrate t2 from u to v
+  # \int \lambda_1(t_1)\exp(-[\Lambda_1(t_1)+\Lambda_2(t_1)-\Lambda_3(t_1)]) \left[\exp(-\Lambda_3(u)) - \exp(-\Lambda_3(v))\right] dt_1
 
-  #this one is the same whether we assume semi-markov or markov transition
-  #if we pre-integrate t2 from t1 to infinity
-  if(tolower(type) %in% c("marginal","m")){
-    f_joint_t1_neither <- function(time_pt1,index){
-      haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-        (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                      Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )^(-theta^(-1)-1)
-    }
-  } else{
-    f_joint_t1_neither <- function(time_pt1,index){
-      gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-        exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                               Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) ) )
-    }
+  #function of t1 if we pre-integrate t2 from t1 to t_cutoff
+  f_joint_t1_both <- function(time_pt1,t_cutoff,index,beta3_tv_const=0,beta3_tv_lin=0){
+    H3_temp <- switch(hazard,
+                      weibull=switch(model,
+                      "semi-markov"= H3_const[index] * (t_cutoff - time_pt1)^alpha3 * exp(beta3_tv_const + beta3_tv_lin * time_pt1),
+                      "markov"=H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)),
+                      piecewise=switch(model,
+                                       "semi-markov"=Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) *
+                                         exp(eta3[index] + beta3_tv_const + beta3_tv_lin*time_pt1),
+                                       "markov"=(Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                                                   Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
+    #return the right value corresponding to the hazard and type
+    switch(hazard,
+           weibull=switch(type,
+                          marginal={
+                            h1_const[index] * time_pt1^alpha1_m1 * (
+                              (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                                            H2_const[index] * time_pt1^alpha2))^(-theta^(-1)-1) -
+                                (1 + theta*(H1_const[index] * time_pt1^alpha1 +
+                                              H2_const[index] * time_pt1^alpha2 +
+                                              H3_temp))^(-theta^(-1)-1))
+                          },
+                          conditional={
+                            gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+                              exp( -gamma[index]*(H1_const[index] * time_pt1^alpha1 + H2_const[index] * time_pt1^alpha2 ) ) *
+                              ( 1 - exp( -gamma[index] * H3_temp))
+                          }),
+          piecewise=switch(type,
+                           marginal={
+                             haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
+                               (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                             Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
+                                 (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                               Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                               H3_temp))^(-theta^(-1)-1))
+                           },
+                           conditional={
+                             gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                               exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                                      Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
+                               ( 1 - exp(-gamma[index] * H3_temp))
+                           }))
   }
 
-  #these regions differ between semimarkov and markov, with H(t-t_1) vs. H(t)-H(t_1) being the key.
-  if(tolower(model) == "semi-markov"){
-
-    #if we pre-integrate t2 from t1 to t_cutoff
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
-          (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                        Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
-            (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                          Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1))
-      }
-    } else{
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
-                  ( 1 - exp(-gamma[index] * Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))
-      }
-    }
-
-
-    #if we pre-integrate t2 from t_cutoff to infinity
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-                  (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                  Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                                  Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))^(-theta^(-1)-1)
-      }
-    } else{
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-                  exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                         Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                                         Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) * exp(eta3[index])))
-      }
-    }
-
-  } else{
-
-    #if we pre-integrate t2 from t1 to t_cutoff
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) * (
-          (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                        Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index])))^(-theta^(-1)-1) -
-            (1 + theta*(Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                          (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
-                            Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])
-                        ))^(-theta^(-1)-1))
-      }
-    } else{
-      f_joint_t1_both <- function(time_pt1,t_cutoff,index){
-        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-          exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                 Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) )) *
-          ( 1 - exp(-gamma[index] * (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
-                                       Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
-      }
-    }
-
-    #if we pre-integrate t2 from t_cutoff to infinity
-    if(tolower(type) %in% c("marginal","m")){
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-          (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                          Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                          (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
-                             Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])
-                        ))^(-theta^(-1)-1)
-      }
-    } else{
-      f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index){
-        gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
-          exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
-                                 Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
-                                 (Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
-                                    Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
-      }
-    }
-
+  #function of t1 if we pre-integrate t2 from t_cutoff to infinity
+  f_joint_t1_nonTerm <- function(time_pt1,t_cutoff,index,beta3_tv_const=0,beta3_tv_lin=0){
+    H3_temp <- switch(hazard,
+                      weibull=switch(model,
+                                     "semi-markov"= H3_const[index] * (t_cutoff - time_pt1)^alpha3 * exp(beta3_tv_const + beta3_tv_lin * time_pt1),
+                                     "markov"=H3_const[index] * (t_cutoff^alpha3 - time_pt1^alpha3)),
+                      piecewise=switch(model,
+                                       "semi-markov"=Haz(t=t_cutoff-time_pt1,phi=phi3,knots=knots_list[[3]]) *
+                                         exp(eta3[index] + beta3_tv_const + beta3_tv_lin*time_pt1),
+                                       "markov"=(Haz(t=t_cutoff,phi=phi3,knots=knots_list[[3]])-
+                                                   Haz(t=time_pt1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
+    #return the right value corresponding to the hazard and type
+    switch(hazard,
+           weibull=switch(type,
+                          marginal={
+                            h1_const[index] * time_pt1^alpha1_m1 *
+                              (1 + theta * (H1_const[index] * time_pt1^alpha1 +
+                                              H2_const[index] * time_pt1^alpha2 +
+                                              H3_temp))^(-theta^(-1)-1)
+                          },
+                          conditional={
+                            gamma[index] * h1_const[index] * time_pt1^alpha1_m1 *
+                              exp(-gamma[index] * (H1_const[index] * time_pt1^alpha1 +
+                                                     H2_const[index] * time_pt1^alpha2 +
+                                                     H3_temp))
+                          }),
+           piecewise=switch(type,
+                            marginal={
+                              haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                                (1 + theta * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                                Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                                H3_temp))^(-theta^(-1)-1)
+                            },
+                            conditional={
+                              gamma[index] * haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) *
+                                exp(-gamma[index] * (Haz(t=time_pt1,phi=phi1,knots=knots_list[[1]]) * exp(eta1[index]) +
+                                                       Haz(t=time_pt1,phi=phi2,knots=knots_list[[2]])* exp(eta2[index]) +
+                                                       H3_temp))
+                            }))
   }
 
+
+  ##finally, p_neither has a closed form, so we can write a function for it directly##
+  #this derivation is actually identical to the "no event" likelihood contribution
+  p_neither_func <- switch(hazard,
+                           weibull=switch(type,
+                                          marginal=function(t2){
+                                            (1 + theta*(H1_const * (t2)^alpha1 +
+                                                          H2_const * (t2)^alpha2) )^(-theta^(-1))
+                                          },
+                                          conditional=function(t2){
+                                            exp(-gamma*(H1_const * (t2)^alpha1 +
+                                                                 H2_const * (t2)^alpha2))
+                                          }),
+                           piecewise=switch(type,
+                                            marginal=function(t2){
+                                              (1 + theta * (Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1) +
+                                                              Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2)))^(-theta^(-1))
+                                            },
+                                            conditional=function(index,t2){
+                                              exp(-gamma*(Haz(t=t2,phi=phi1,knots=knots_list[[1]])* exp(eta1) +
+                                                                   Haz(t=t2,phi=phi2,knots=knots_list[[2]])* exp(eta2)))
+                                            })
+  )
+
+  ##ACTUALLY COMPUTING THE PROBABILITIES##
+  ##************************************##
 
   #If we are computing 'dynamic probabilities' updated to some later timepoint t_start,
   #then we need to compute the probability of having experienced the event by t_start.
   #This is easier for 'neither' and 'tonly' outcomes because the inner integral does not depend on t_start.
   if(t_start > 0){
-    p_neither_t2_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_start, upper=Inf, index=x)$value,
-                                                          error=function(cnd){return(NA)}) })
-
-    p_neither_joint_start <-  sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_start, upper=Inf, index=x)$value,
-                                                              error=function(cnd){return(NA)}) })
-
+    p_neither_start <- p_neither_func(t2=t_start)
     p_tonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_start, index=x)$value,
-                                                     error=function(cnd){return(NA)}) })
-    p_neither_start <- p_neither_t2_start + p_neither_joint_start
+                                               error=function(cnd){return(NA)}) })
   } else{
     p_tonly_start <- 0
     p_neither_start <- 1
   }
 
-
+  #this function allows inputs with multiple subjects, multiple time points, or both
+  #therefore, we need to create the right data structure to contain the output.
   if(n > 1){
     if(t_length > 1){
       out_mat <- array(dim=c(t_length,4,n),dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither"),paste0("i",1:n)))
@@ -544,46 +317,82 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
       out_mat <- matrix(nrow=n,ncol=4,dimnames = list(paste0("i",1:n),c("p_ntonly","p_both","p_tonly","p_neither")))
     }
   } else{
-    out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither")))
+      out_mat <- matrix(nrow=t_length,ncol=4,dimnames = list(paste0("t",t_cutoff),c("p_ntonly","p_both","p_tonly","p_neither")))
   }
 
+  #loop through each time point, and compute the predicted probability at that time point for all subjects
+  #each probability is an n-length vector
   for(t_ind in 1:t_length){
-    p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_cutoff[t_ind], index=x)$value,
+    t_temp <- t_cutoff[t_ind]
+    p_tonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=0, upper=t_temp, index=x)$value,
                                                error=function(cnd){return(NA)}) })
+    p_neither <- p_neither_func(t2=t_temp)
 
-    p_neither_t2 <- sapply(1:n,function(x){tryCatch(stats::integrate(f_t2, lower=t_cutoff[t_ind], upper=Inf,index=x)$value,
+    #now, we have to be careful computing the probabilities that include h3 because it may depend on t1
+    p_both_start <- p_ntonly_start <- rep(0,n)
+    if(h3_tv %in% c("piecewise")){
+      #a piecewise effect cannot be integrated in one go, because it is discontinuous
+      #instead it must be divided into constant regions, integrated one region at a time and summed up
+      curr_interval <- findInterval(x = t_temp,tv_knots,left.open = TRUE)
+      #this is now a vector starting at 0, with elements at each change point up to the target time t_temp
+      tv_knots_temp <- c(tv_knots[1:curr_interval],t_temp)
+      if(t_temp == 0){ tv_knots_temp <- c(0,0)}
+
+      #loop through the regions of constant effect, and add them together
+      p_both <- p_ntonly <- rep(0,n)
+      for(i in 1:(length(tv_knots_temp)-1)){
+        p_both <- p_both + sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=tv_knots_temp[i], upper=tv_knots_temp[i+1],
+                                                                   t_cutoff=t_temp, index=x,
+                                                                   beta3_tv_const=beta3_tv[i], beta3_tv_lin=0)$value,
+                                                  error=function(cnd){return(NA)}) })
+
+        p_ntonly <- p_ntonly + sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=tv_knots_temp[i], upper=tv_knots_temp[i+1],
+                                                                     t_cutoff=t_temp, index=x,
+                                                                     beta3_tv_const=beta3_tv[i], beta3_tv_lin=0)$value,
                                                     error=function(cnd){return(NA)}) })
+      }
+      if(t_start > 0){
+        #need to similarly loop through the constant regions, now up to t_start instead of t_temp
+        curr_interval <- findInterval(x = t_start,tv_knots,left.open = TRUE)
+        tv_knots_temp <- c(tv_knots[1:curr_interval],t_start)
+        for(i in 1:(length(tv_knots_temp)-1)){
+          p_both_start <- p_both_start + sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=tv_knots_temp[i], upper=tv_knots_temp[i+1],
+                                                                                          t_cutoff=t_temp, index=x,
+                                                                                          beta3_tv_const=beta3_tv[i], beta3_tv_lin=0)$value,
+                                                                         error=function(cnd){return(NA)}) })
 
-    p_neither_joint <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_neither, lower=t_cutoff[t_ind], upper=Inf, index=x)$value,
-                                                       error=function(cnd){return(NA)}) })
-
-    p_both <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_cutoff[t_ind],
-                                                        t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                              error=function(cnd){return(NA)}) })
-
-    p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_cutoff[t_ind],
-                                                                 t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                error=function(cnd){return(NA)}) })
-
-    #to compute 'dynamic probabilities' updated for a non-zero start value t_start
-    #we need to compute a second integral for the probability up to time t_start and
-    #then subtract it off. The mathematical details are written in the paper.
-    if(t_start > 0){
-      p_both_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_start,
-                                                                       t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                      error=function(cnd){return(NA)}) })
-
-      p_ntonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_start,
-                                                                         t_cutoff=t_cutoff[t_ind], index=x)$value,
-                                                        error=function(cnd){return(NA)}) })
-    } else{
-      p_both_start <- p_ntonly_start <- 0
+          p_ntonly_start <- p_ntonly_start + sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=tv_knots_temp[i], upper=tv_knots_temp[i+1],
+                                                                                              t_cutoff=t_temp, index=x,
+                                                                                              beta3_tv_const=beta3_tv[i], beta3_tv_lin=0)$value,
+                                                                             error=function(cnd){return(NA)}) })
+        }
+      }
+    } else{ #just normal, time-invariant prediction
+      p_both <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_temp,
+                                                                          t_cutoff=t_temp, index=x,
+                                                                   beta3_tv_const=0,beta3_tv_lin=beta3_tv_linear)$value,
+                                                         error=function(cnd){return(NA)}) })
+      p_ntonly <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_temp,
+                                                                              t_cutoff=t_temp, index=x,
+                                                                   beta3_tv_const=0,beta3_tv_lin=beta3_tv_linear)$value,
+                                                             error=function(cnd){return(NA)}) })
+      if(t_start > 0){
+        p_both_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_both, lower=0, upper=t_start,
+                                                                                        t_cutoff=t_temp, index=x,
+                                                                   beta3_tv_const=0,beta3_tv_lin=beta3_tv_linear)$value,
+                                                                       error=function(cnd){return(NA)}) })
+        p_ntonly_start <- sapply(1:n,function(x){tryCatch(stats::integrate(f_joint_t1_nonTerm, lower=0, upper=t_start,
+                                                                                            t_cutoff=t_temp, index=x,
+                                                                   beta3_tv_const=0,beta3_tv_lin=beta3_tv_linear)$value,
+                                                                           error=function(cnd){return(NA)}) })
+      }
     }
+
 
     out_temp <- cbind(p_ntonly=(p_ntonly-p_ntonly_start)/p_neither_start,
                       p_both=(p_both-p_both_start)/p_neither_start,
                       p_tonly=(p_tonly-p_tonly_start)/p_neither_start,
-                      p_neither=(p_neither_t2 + p_neither_joint)/p_neither_start)
+                      p_neither=(p_neither)/p_neither_start)
 
     #I noticed that sometimes, if exactly one category has an NA, then we could back out the value
     #from the other categories. However, we don't want any to be negative.
@@ -595,9 +404,8 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
                           }
                           return(x)}))
     if(any(is.na(out_temp)) | any(abs(1-rowSums(out_temp))>tol)){
-      warning(paste0("some predicted probabilities do not sum to within",tol,"of 1."))
+      warning(paste0("some predicted probabilities at time ", t_temp," do not sum to within",tol,"of 1."))
     }
-
 
     if(n > 1){
       if(t_length > 1){
@@ -615,13 +423,233 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
 
 
 
+
+####FUNCTIONS FOR BACKWARDS COMPATIBILITY
+
+
+
+#' Calculate Weibull absolute risk profiles
+#'
+#' This alias function calculates absolute risk profiles under weibull baseline hazard specifications. Used for backwards compatibility.
+#'
+#' @inheritParams calc_risk
+#'
+#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
+#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
+#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
+#' @export
+calc_risk_WB <- function(para, Xmat1, Xmat2, Xmat3,
+                         t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
+                         type="marginal", gamma=1,model="semi-markov",
+                         h3_tv="none",tv_knots=NULL){
+  calc_risk(para=para, Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+            hazard="weibull",knots_list=NULL,
+            t_cutoff=t_cutoff, t_start=t_start, tol=tol, frailty=frailty,
+            type=type, gamma=gamma,model=model,
+            h3_tv=h3_tv,tv_knots=tv_knots)
+}
+
+#' Calculate Piecewise Constant absolute risk profiles
+#'
+#' This alias function calculates absolute risk profiles under piecewise constant baseline hazard specifications. Used for backwards compatibility.
+#'
+#' @inheritParams calc_risk
+#' @param knots_list A list containing three numeric vectors, representing the breakpoints
+#' of the piecewise specification for each transition hazard (excluding 0).
+#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
+#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
+#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
+#' @export
+calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
+                         t_cutoff, t_start=0, tol=1e-3, frailty=TRUE,
+                         type="marginal", gamma=1,model="semi-markov",
+                         h3_tv="none",tv_knots=NULL){
+  calc_risk(para=para, Xmat1=Xmat1, Xmat2=Xmat2, Xmat3=Xmat3,
+            hazard="piecewise",knots_list=knots_list,
+            t_cutoff=t_cutoff, t_start=t_start, tol=tol, frailty=frailty,
+            type=type, gamma=gamma,model=model,
+            h3_tv=h3_tv,tv_knots=tv_knots)
+}
+
+#' Calculate absolute risk profiles after non-terminal event
+#'
+#' This function calculates absolute risk profiles conditional on non-terminal
+#' event already occurring.
+#'
+#' @inheritParams proximal_gradient_descent
+#' @param t_cutoff Numeric vector indicating the time(s) to compute the risk profile.
+#' @param t_start Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.
+#' @param tol Numeric value for the tolerance of the numerical integration procedure.
+#' @param type String either indicating 'marginal' for population-averaged probabilities,
+#'   or 'conditional' for probabilities computed at the specified gamma
+#' @param gamma Numeric value indicating the fixed level of the frailty assumed for predicted probabilities,
+#'   if 'type' is set to 'conditional'
+#' @param h3_tv String indicating whether there is an effect of t1 on hazard 3.
+#' @param tv_knots for piecewise effect of t1 in h3, these are the knots at which the effect jumps
+#'
+#' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
+#'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
+#'   If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
+#' @export
+calc_risk_term <- function(para, Xmat3,hazard,knots_list=NULL,
+                      t_cutoff, t_start, tol=1e-3, frailty=TRUE,
+                      type="marginal", gamma=1,model="semi-markov",
+                      h3_tv="none",tv_knots=NULL){
+  #notice reduced default tolerance
+  # browser()
+  ##TO START, EXTRACT POINT ESTIMATES OF ALL PARAMETERS FROM MODEL OBJECT##
+  ##*********************************************************************##
+
+  n <- nrow(Xmat3)
+  t_length <- length(t_cutoff)
+  t_start_length <- length(t_start)
+  names(t_cutoff) <- paste0("t",t_cutoff)
+  names(t_start) <- paste0("t",t_start,"_1")
+  ids <- 1:n; names(ids) <- paste0("i",ids)
+  #for now, assume that start is also t1
+  # if(is.null(t1)){t_1 <- t_start}
+  #standardize namings for the use of "switch" below
+  stopifnot(tolower(hazard) %in% c("wb","weibull","pw","piecewise"))
+  hazard <- switch(tolower(hazard),
+                   wb="weibull",weibull="weibull",pw="piecewise",piecewise="piecewise")
+  stopifnot(tolower(type) %in% c("c","conditional","m","marginal"))
+  type <- switch(tolower(type),
+                 c="conditional",conditional="conditional",m="marginal",marginal="marginal")
+  stopifnot(tolower(model) %in% c("sm","semi-markov","m","markov"))
+  model <- switch(tolower(model),
+                  sm="semi-markov","semi-markov"="semi-markov",m="markov",markov="markov")
+
+  if(hazard == "weibull"){
+    nP01 <- nP02 <- nP03 <- 2
+  } else{
+    stopifnot(!is.null(knots_list))
+    #left pad with a zero if it is not already present
+    if(knots_list[[1]][1] != 0){knots_list[[1]] <- c(0,knots_list[[1]])}
+    if(knots_list[[2]][1] != 0){knots_list[[2]] <- c(0,knots_list[[2]])}
+    if(knots_list[[3]][1] != 0){knots_list[[3]] <- c(0,knots_list[[3]])}
+    nP01 <- length(knots_list[[1]])
+    nP02 <- length(knots_list[[2]])
+    nP03 <- length(knots_list[[3]])
+  }
+
+  if(frailty){
+    nP0 <- nP01 + nP02 + nP03 + 1
+    theta <- exp(para[nP0])
+    if(type=="conditional" & length(gamma)==1){
+      gamma <- rep(gamma,n)
+    }
+  } else{
+    nP0 <- nP01 + nP02 +nP03
+    type <- "conditional"
+    gamma <- rep(1,n)
+  }
+
+  #specify different forms by which t1 can be incorporated into h3
+  if(tolower(h3_tv) == "linear"){
+    if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
+    n_tv <- 1
+    beta3_tv_linear <- tail(para,n = n_tv)
+  } else if(tolower(h3_tv) %in% c("pw","piecewise")){
+    if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
+    stopifnot(!is.null(tv_knots))
+    if(tv_knots[1] != 0){tv_knots <- c(0,tv_knots)}
+    if(tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
+    n_tv <- length(tv_knots) - 2
+    beta3_tv_pw <- c(0,tail(para,n=n_tv))
+    beta3_tv_linear <- 0
+  } else{
+    n_tv <- 0
+    beta3_tv_linear <- 0
+  }
+
+  if(!is.null(Xmat3) && !(ncol(Xmat3)==0)){
+    nP3 <- ncol(Xmat3)
+    beta3 <- tail(para,n = nP3+n_tv)[1:nP3]
+    eta3 <- as.vector(Xmat3 %*% beta3)
+  } else{
+    nP3 <- 0
+    eta3 <- 0
+  }
+
+  ##Set up the hazard functions##
+  ##***************************##
+  if(hazard == "weibull"){
+    alpha3=exp(para[6])
+    kappa3=exp(para[5])
+  } else{
+    phi3 <- as.numeric(para[(1+nP01+nP02):(nP01+nP02+nP03)])
+    Haz <- function(t,phi,knots){
+      rowSums(sweep(x=pw_cum_mat(t,knots),MARGIN=2,STATS=exp(phi),FUN ="*"))
+    }
+  }
+
+  ##******************************************##
+  ## Calculating posterior predictive density ##
+  ##******************************************##
+
+  #probability of surviving from to time t2 given that non-terminal event happened at t1
+  #naming convention comes from Putter (2007)
+  S_2r <- function(t2,t1,index){
+    if(tolower(h3_tv) %in% c("pw","piecewise")){
+      curr_interval <- findInterval(x = t1,vec = tv_knots,left.open = TRUE)
+      beta3_tv <- beta3_tv_pw[curr_interval]
+    } else if(tolower(h3_tv) == "linear"){
+      beta3_tv <- beta3_tv_lin * t1
+    } else{
+      beta3_tv <- 0
+    }
+    H3_temp <- switch(hazard,
+                      weibull=switch(model,
+                                     "semi-markov"= kappa3 * exp(as.vector(eta3[index]) + beta3_tv) * (t2 - t1)^alpha3,
+                                     "markov"=kappa3 * exp(as.vector(eta3[index])) * (t2^alpha3 - t1^alpha3)),
+                      piecewise=switch(model,
+                                       "semi-markov"=Haz(t=t2 - t1,phi=phi3,knots=knots_list[[3]]) *
+                                         exp(eta3[index] + beta3_tv),
+                                       "markov"=(Haz(t=t2,phi=phi3,knots=knots_list[[3]])-
+                                                   Haz(t=t1,phi=phi3,knots=knots_list[[3]])) * exp(eta3[index])))
+    #return the right value corresponding to the type
+    switch(type,
+           marginal=(1+theta*H3_temp)^(-theta^(-1)),
+           conditional=exp(-gamma[index]*H3_temp))
+  }
+
+  ##ACTUALLY COMPUTING THE PROBABILITIES##
+  ##************************************##
+
+  if(n > 1){
+    if(t_length > 1){
+      if(t_start_length > 1){
+        out_mat <- array(dim=c(t_length,t_start_length,n),dimnames = list(paste0("t",t_cutoff),paste0("t",t_start,"_1"),paste0("i",1:n)))
+        for(i in 1:n){out_mat[,,i] <- outer(t_cutoff,t_start,function(x,y){S_2r(x,y,i)})}
+      } else{
+        out_mat <- outer(ids,t_cutoff,function(x,y){S_2r(y,t_start,x)})
+      }
+    } else{
+      if(t_start_length > 1){
+        out_mat <- outer(ids,t_start,function(x,y){S_2r(t_cutoff,y,x)})
+      }
+    }
+  } else{
+    out_mat <- outer(t_cutoff,t_start,function(x,y){S_2r(x,y,1)})
+  }
+
+
+  return(out_mat)
+}
+
+
+
+
+
+
+
 #' Get matrix of observed outcome categories
 #'
 #' This function returns a matrix giving the observed outcome categories of each observation at various
 #'   time cutoffs.
 #'
 #' @inheritParams proximal_gradient_descent
-#' @inheritParams calc_risk_WB
+#' @inheritParams calc_risk
 #'
 #' @return a matrix or array.
 #' @export
@@ -644,9 +672,9 @@ get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
 
     #For cases where y=t_cutoff, I consider events that happened exactly at t_cutoff in categorization.
     neither <- t_cutoff[t_ind] < y1 | #neither
-                y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 0 #neither
+      y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 0 #neither
     ntonly <- y1 <= t_cutoff[t_ind] & t_cutoff[t_ind] < y2 | #ntonly
-                      y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 0 #ntonly
+      y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 0 #ntonly
     tonly <- y2 <= t_cutoff[t_ind] & delta1 == 0 & delta2 == 1 #tonly
     both <- y2 <= t_cutoff[t_ind] & delta1 == 1 & delta2 == 1 #both
 
@@ -672,13 +700,19 @@ get_outcome_mat <- function(y1, y2, delta1, delta2, t_cutoff){
 }
 
 
+
+
+
+
+
+
 #' Get inverse probability of censoring weights
 #'
 #' This function returns a vector of inverse probability of censoring weights from an unadjusted Cox model
 #'   for censoring times.
 #'
 #' @inheritParams proximal_gradient_descent
-#' @inheritParams calc_risk_WB
+#' @inheritParams calc_risk
 #'
 #' @return a vector.
 #' @export
@@ -806,39 +840,35 @@ compute_hum <- function(outcome_mat, pred_mat, ipcw_mat){
   #first, let's just consider the case of t_cutoff being a single point, so everything here is matrices
   n <- nrow(outcome_mat)
   #n is the sample size
-  a <- matrix(0,n,4);
-  one1=a;
-  one1[,1]=1;
-  one2=a;
-  one2[,2]=1;
-  one3=a;
-  one3[,3]=1;
-  one4=a;
-  one4[,4]=1;
+  a <- matrix(0,n,4)
+  one1=a
+  one1[,1]=1
+  one2=a
+  one2[,2]=1
+  one3=a
+  one3[,3]=1
+  one4=a
+  one4[,4]=1
 
-  x1=which(outcome_mat[,1]==1);
-  x2=which(outcome_mat[,2]==1);
-  x3=which(outcome_mat[,3]==1);
-  x4=which(outcome_mat[,4]==1);
+  x1=which(outcome_mat[,1]==1)
+  x2=which(outcome_mat[,2]==1)
+  x3=which(outcome_mat[,3]==1)
+  x4=which(outcome_mat[,4]==1)
   n1=length(x1)
   n2=length(x2)
   n3=length(x3)
   n4=length(x4)
 
-  dd1=pp-one1;
-  dd2=pp-one2;
-  dd3=pp-one3;
-  dd4=pp-one4;
+  dd1=pp-one1
+  dd2=pp-one2
+  dd3=pp-one3
+  dd4=pp-one4
 
   #here, the 'brier score' used to assess correct categorization is computed on the exp scale, and each term is square rooted
-  jd1=sqrt(dd1[,1]^2+dd1[,2]^2+dd1[,3]^2+dd1[,4]^2);
-  jd2=sqrt(dd2[,1]^2+dd2[,2]^2+dd2[,3]^2+dd2[,4]^2);
-  jd3=sqrt(dd3[,1]^2+dd3[,2]^2+dd3[,3]^2+dd3[,4]^2);
-  jd4=sqrt(dd4[,1]^2+dd4[,2]^2+dd4[,3]^2+dd4[,4]^2);
-  jd1=exp(jd1);
-  jd2=exp(jd2);
-  jd3=exp(jd3);
-  jd4=exp(jd4);
+  jd1=exp(sqrt(dd1[,1]^2+dd1[,2]^2+dd1[,3]^2+dd1[,4]^2))
+  jd2=exp(sqrt(dd2[,1]^2+dd2[,2]^2+dd2[,3]^2+dd2[,4]^2))
+  jd3=exp(sqrt(dd3[,1]^2+dd3[,2]^2+dd3[,3]^2+dd3[,4]^2))
+  jd4=exp(sqrt(dd4[,1]^2+dd4[,2]^2+dd4[,3]^2+dd4[,4]^2))
 
   # resulting matrix pattern is as follows (consider simple case of 2 individuals in each of 4 categories to establish pattern):
   #   1111  1211
@@ -908,10 +938,10 @@ compute_pdi <- function(outcome_mat, pred_mat, ipcw_mat){
     stop("for now, pdi can only be computed at a single t_cutoff point")
   }
   #flag which subjects ended in which outcome category
-  x1=which(outcome_mat[,1]==1);
-  x2=which(outcome_mat[,2]==1);
-  x3=which(outcome_mat[,3]==1);
-  x4=which(outcome_mat[,4]==1);
+  x1=which(outcome_mat[,1]==1)
+  x2=which(outcome_mat[,2]==1)
+  x3=which(outcome_mat[,3]==1)
+  x4=which(outcome_mat[,4]==1)
   n1=length(x1)
   n2=length(x2)
   n3=length(x3)
@@ -939,11 +969,13 @@ compute_pdi <- function(outcome_mat, pred_mat, ipcw_mat){
   # sum(kronecker(X = ipcw1_nozero,Y = apply(X = ipcw234_mat,MARGIN = 1,FUN = prod)))
 
   #separate matrices for subjects in each of the four observed categories
+  #use "drop = FALSE" to suppress conversion of single row to vector
+  #https://stackoverflow.com/questions/12601692/r-and-matrix-with-1-row
   pv=pred_mat
-  pv1=pv[x1,]
-  pv2=pv[x2,]
-  pv3=pv[x3,]
-  pv4=pv[x4,]
+  pv1=pv[x1,,drop = FALSE]
+  pv2=pv[x2,,drop = FALSE]
+  pv3=pv[x3,,drop = FALSE]
+  pv4=pv[x4,,drop = FALSE]
 
   #approach here is to compute PDI_i as in Van Caster (2012) SIM paper
   # pdi1 <- pdi2 <- pdi3 <- pdi4 <- 0
@@ -1043,6 +1075,10 @@ compute_pdi <- function(outcome_mat, pred_mat, ipcw_mat){
 #' @export
 compute_ccp <- function(outcome_mat, pred_mat, ipcw_mat){
 
+  if(length(dim(outcome_mat))==3){
+    stop("for now, ccp can only be computed at a single t_cutoff point")
+  }
+
   #compute the ccp directly as the average of correct classification overall
     #this implicitly weights the categories by their prevalence, which is how the CCP was
   #We could instead first compute ccp_m for each of the categories,
@@ -1118,7 +1154,7 @@ compute_nri <- function(outcome_mat, pred_mat1, pred_mat2, ipcw_mat){
 #'
 #'
 #' @inheritParams compute_score
-#' @inheritParams calc_risk_WB
+#' @inheritParams calc_risk
 #' @param dat Data
 #'
 #' @return a vector with the non-terminal and terminal AUC.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/calc_risks.R
 \name{calc_risk_PW}
 \alias{calc_risk_PW}
-\title{Calculate absolute risk profiles}
+\title{Calculate Piecewise Constant absolute risk profiles}
 \usage{
 calc_risk_PW(
   para,
@@ -16,7 +16,9 @@ calc_risk_PW(
   frailty = TRUE,
   type = "marginal",
   gamma = 1,
-  model = "semi-markov"
+  model = "semi-markov",
+  h3_tv = "none",
+  tv_knots = NULL
 )
 }
 \arguments{
@@ -50,6 +52,10 @@ or 'conditional' for probabilities computed at the specified gamma}
 if 'type' is set to 'conditional'}
 
 \item{model}{String specifying the transition assumption}
+
+\item{h3_tv}{String indicating whether there is an effect of t1 on hazard 3.}
+
+\item{tv_knots}{for piecewise effect of t1 in h3, these are the knots at which the effect jumps}
 }
 \value{
 if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
@@ -57,5 +63,5 @@ of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matri
 If Xmat has \code{n} rows and t_cutoff is a vector of length \code{s}, then returns an \code{s} by 4 by \code{n} array.
 }
 \description{
-This function calculates absolute risk profiles under piecewise constant baseline hazard specifications.
+This alias function calculates absolute risk profiles under piecewise constant baseline hazard specifications. Used for backwards compatibility.
 }
