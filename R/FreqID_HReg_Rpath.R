@@ -9,7 +9,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                               startVals=NULL, ball_L2=Inf,
                               warm_start=TRUE, step_size_min=1e-6, step_size_max=1e6, step_size_init=1,
                               step_size_scale=0.5, #no checks implemented on these values!!
-                              step_delta=0.5, maxit=300,
+                              step_delta=0.5, maxit=300, extra_starts=0,
                               conv_crit = "nll_pen_change", conv_tol=1e-6,
                               verbose=0){
 
@@ -124,9 +124,13 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
     #using Wang (2014) 3.3, solving for 'eta' given the other three pieces
     #add the -1 to account for starting at 0, so that final results are of length N_path_steps
     step_eta <- exp((log(lambda_target) - log(lambda0)) / (N_path_steps-1))
-    if(lambda_target > lambda0 | step_eta < 0.9 | step_eta > 1){
+    if(step_eta < 0.9 | step_eta > 1){
       print(c(N_path_steps=N_path_steps,step_eta=step_eta,lambda_target=lambda_target,lambda0=lambda0))
-      stop("provided lambda_target is too big, or provided N_path_steps is too small. require step_eta > 0.9")
+      warning("provided lambda_target is too big, or provided N_path_steps is too small. recommend step_eta > 0.9")
+    }
+    if(lambda_target > lambda0){
+      print(c(N_path_steps=N_path_steps,step_eta=step_eta,lambda_target=lambda_target,lambda0=lambda0))
+      warning("provided lambda_target is bigger than largest gradient, results may be overly regularized.")
     }
     #for now, we're just gonna let the same lambda govern all the betas, we'll work on the rest later.
     #note that we already 'have the solution' for the max value, because it is the startVal, FIX
@@ -158,6 +162,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                                               maxit=maxit,
                                               conv_crit = conv_crit,
                                               conv_tol=conv_tol,
+                                              extra_starts=extra_starts,
                                               verbose=verbose)
 
   # if(ncol(lambda_path) == 1){ #as long as all the fused lasso lambdas are the same, make the plots
