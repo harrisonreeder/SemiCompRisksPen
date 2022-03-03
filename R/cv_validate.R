@@ -4,6 +4,9 @@
 #'
 #' @inheritParams FreqID_HReg2
 #' @inheritParams calc_risk
+#' @param n_folds Integer value specifying the number of partitions to divide the data into for cross validation
+#' @param verbose Numeric indicating the amount of intermediate information that should be printed during the cross-validation process.
+#'   Larger numbers correspond to more printed information.
 #'
 #' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
 #'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.
@@ -80,7 +83,7 @@ cv_predict <- function(Formula, data, na.action="na.fail", subset=NULL,
     } else if(h3_tv == "piecewise"){
       stopifnot(!is.null(tv_knots))
       if(tv_knots[1] != 0){tv_knots <- c(0,tv_knots)}
-      if(tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
+      if(utils::tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
       Xmat3_test <- Xmat3_test[,-((ncol(Xmat3_test) - length(tv_knots) + 3):ncol(Xmat3_test))]
     }
 
@@ -116,6 +119,8 @@ cv_predict <- function(Formula, data, na.action="na.fail", subset=NULL,
 #'
 #' @param cv_predict_out_list is an object output from \code{cv_predict} function
 #' @param metrics is a vector of strings naming what metrics to compute. Options are "brier", "auc", "hum", "ccp",and "pdi".
+#' @param verbose Numeric indicating the amount of intermediate information that should be printed during the cross-validation process.
+#'   Larger numbers correspond to more printed information.
 #'
 #' @return if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix
 #'   of probabilities. If Xmat has \code{n} rows, then returns an \code{n} by 4 matrix of probabilities.

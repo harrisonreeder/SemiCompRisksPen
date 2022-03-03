@@ -155,7 +155,7 @@ forward_selection <- function(vars, data, na.action="na.fail", subset=NULL,
 
 
     #tail used because if there's a tie for some reason, just pick the last
-    best_model <- tail(which(min(model_crit_vec) == model_crit_vec),n=1)
+    best_model <- utils::tail(which(min(model_crit_vec) == model_crit_vec),n=1)
     best_crit <- model_crit_vec[best_model]
     used1 <- used1_list[[best_model]]
     used2 <- used2_list[[best_model]]

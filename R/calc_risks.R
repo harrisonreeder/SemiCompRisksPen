@@ -2,6 +2,7 @@
 #'
 #' This function calculates absolute risk profiles under weibull baseline hazard specifications.
 #'
+#' @inheritParams FreqID_HReg_R
 #' @inheritParams proximal_gradient_descent
 #' @param t_cutoff Numeric vector indicating the time(s) to compute the risk profile.
 #' @param t_start Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.
@@ -94,14 +95,14 @@ calc_risk <- function(para, Xmat1, Xmat2, Xmat3,hazard,knots_list=NULL,
   if(tolower(h3_tv) == "linear"){
     if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
     n_tv <- 1
-    beta3_tv_linear <- tail(para,n = n_tv)
+    beta3_tv_linear <- utils::tail(para,n = n_tv)
   } else if(tolower(h3_tv) %in% c("pw","piecewise")){
     if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
     stopifnot(!is.null(tv_knots))
     if(tv_knots[1] != 0){tv_knots <- c(0,tv_knots)}
-    if(tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
+    if(utils::tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
     n_tv <- length(tv_knots) - 2
-    beta3_tv <- c(0,tail(para,n=n_tv))
+    beta3_tv <- c(0,utils::tail(para,n=n_tv))
     beta3_tv_linear <- 0
   } else{
     n_tv <- 0
@@ -477,6 +478,7 @@ calc_risk_PW <- function(para, Xmat1, Xmat2, Xmat3, knots_list,
 #' event already occurring.
 #'
 #' @inheritParams proximal_gradient_descent
+#' @inheritParams FreqID_HReg_R
 #' @param t_cutoff Numeric vector indicating the time(s) to compute the risk profile.
 #' @param t_start Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.
 #' @param tol Numeric value for the tolerance of the numerical integration procedure.
@@ -548,14 +550,14 @@ calc_risk_term <- function(para, Xmat3,hazard,knots_list=NULL,
   if(tolower(h3_tv) == "linear"){
     if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
     n_tv <- 1
-    beta3_tv_linear <- tail(para,n = n_tv)
+    beta3_tv_linear <- utils::tail(para,n = n_tv)
   } else if(tolower(h3_tv) %in% c("pw","piecewise")){
     if(tolower(model) != "semi-markov"){stop("must be semi-markov to have t1 in h3.")}
     stopifnot(!is.null(tv_knots))
     if(tv_knots[1] != 0){tv_knots <- c(0,tv_knots)}
-    if(tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
+    if(utils::tail(tv_knots, n=1) != Inf){tv_knots <- c(tv_knots,Inf)}
     n_tv <- length(tv_knots) - 2
-    beta3_tv_pw <- c(0,tail(para,n=n_tv))
+    beta3_tv_pw <- c(0,utils::tail(para,n=n_tv))
     beta3_tv_linear <- 0
   } else{
     n_tv <- 0
@@ -564,7 +566,7 @@ calc_risk_term <- function(para, Xmat3,hazard,knots_list=NULL,
 
   if(!is.null(Xmat3) && !(ncol(Xmat3)==0)){
     nP3 <- ncol(Xmat3)
-    beta3 <- tail(para,n = nP3+n_tv)[1:nP3]
+    beta3 <- utils::tail(para,n = nP3+n_tv)[1:nP3]
     eta3 <- as.vector(Xmat3 %*% beta3)
   } else{
     nP3 <- 0
@@ -594,7 +596,7 @@ calc_risk_term <- function(para, Xmat3,hazard,knots_list=NULL,
       curr_interval <- findInterval(x = t1,vec = tv_knots,left.open = TRUE)
       beta3_tv <- beta3_tv_pw[curr_interval]
     } else if(tolower(h3_tv) == "linear"){
-      beta3_tv <- beta3_tv_lin * t1
+      beta3_tv <- beta3_tv_linear * t1
     } else{
       beta3_tv <- 0
     }

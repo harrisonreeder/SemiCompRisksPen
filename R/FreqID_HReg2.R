@@ -10,6 +10,7 @@
 #' @param optim_method a string naming which \code{optim} method should be used.
 #'
 #' @return \code{FreqID_HReg2} returns an object of class \code{Freq_HReg}.
+#' @import Formula
 #' @export
 FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
                         hazard=c("weibull"),frailty=TRUE, model, knots_list = NULL,
@@ -180,6 +181,7 @@ FreqID_HReg2 <- function(Formula, data, na.action="na.fail", subset=NULL,
 
 
 
+#' @export
 print.Freq_HReg2 <- function (x, digits = 3, alpha = 0.05, ...)
 {
   conf.level = alpha
@@ -226,6 +228,7 @@ print.Freq_HReg2 <- function (x, digits = 3, alpha = 0.05, ...)
 }
 
 
+#' @export
 summary.Freq_HReg2 <- function (object, digits = 3, alpha = 0.05, ...)
 {
   # browser()
@@ -334,6 +337,7 @@ summary.Freq_HReg2 <- function (object, digits = 3, alpha = 0.05, ...)
 
 
 
+#' @export
 print.summ.Freq_HReg2 <- function (x, digits = 3, ...)
 {
   obj <- x
@@ -363,12 +367,7 @@ print.summ.Freq_HReg2 <- function (x, digits = 3, ...)
   invisible()
 }
 
-
-
-# These are prediction functions Kyu Ha has written in his current package, that I'll try and update
-# For the new models.
-#
-#
+#' @export
 predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL, x3new = NULL,
           tseq = c(0, 5, 10), alpha = 0.05, ...)
 {
@@ -495,16 +494,16 @@ predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL,
       se.loglogS.1 <- sqrt(diag(Var.loglogS.1))
       se.loglogS.1[is.nan(se.loglogS.1)] <- 0
     }
-    LL.1 <- S.1^exp(-qnorm(conf.level/2) * se.loglogS.1)
-    UL.1 <- S.1^exp(qnorm(conf.level/2) * se.loglogS.1)
+    LL.1 <- S.1^exp(-stats::qnorm(conf.level/2) * se.loglogS.1)
+    UL.1 <- S.1^exp(stats::qnorm(conf.level/2) * se.loglogS.1)
     if(all(is.na(Var.h.1))){
       se.h.1 <- NA
     } else{
       se.h.1 <- sqrt(diag(Var.h.1))
       se.h.1[is.nan(se.h.1)] <- 0
     }
-    LLh.1 <- h.1 + qnorm(conf.level/2) * se.h.1 #sign reversed because 0.025 quantile is negative
-    ULh.1 <- h.1 - qnorm(conf.level/2) * se.h.1
+    LLh.1 <- h.1 + stats::qnorm(conf.level/2) * se.h.1 #sign reversed because 0.025 quantile is negative
+    ULh.1 <- h.1 - stats::qnorm(conf.level/2) * se.h.1
     LLh.1[LLh.1 < 0] <- 0
 
     #SECOND TRANSITION
@@ -603,16 +602,16 @@ predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL,
       se.loglogS.2 <- sqrt(diag(Var.loglogS.2))
       se.loglogS.2[is.nan(se.loglogS.2)] <- 0
     }
-    LL.2 <- S.2^exp(-qnorm(conf.level/2) * se.loglogS.2)
-    UL.2 <- S.2^exp(qnorm(conf.level/2) * se.loglogS.2)
+    LL.2 <- S.2^exp(-stats::qnorm(conf.level/2) * se.loglogS.2)
+    UL.2 <- S.2^exp(stats::qnorm(conf.level/2) * se.loglogS.2)
     if(all(is.na(Var.h.2))){
       se.h.2 <- NA
     } else{
       se.h.2 <- sqrt(diag(Var.h.2))
       se.h.2[is.nan(se.h.2)] <- 0
     }
-    LLh.2 <- h.2 + qnorm(conf.level/2) * se.h.2 #sign reversed because 0.025 quantile is negative
-    ULh.2 <- h.2 - qnorm(conf.level/2) * se.h.2
+    LLh.2 <- h.2 + stats::qnorm(conf.level/2) * se.h.2 #sign reversed because 0.025 quantile is negative
+    ULh.2 <- h.2 - stats::qnorm(conf.level/2) * se.h.2
     LLh.2[LLh.2 < 0] <- 0
 
     #THIRD TRANSITION
@@ -711,16 +710,16 @@ predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL,
       se.loglogS.3 <- sqrt(diag(Var.loglogS.3))
       se.loglogS.3[is.nan(se.loglogS.3)] <- 0
     }
-    LL.3 <- S.3^exp(-qnorm(conf.level/2) * se.loglogS.3)
-    UL.3 <- S.3^exp(qnorm(conf.level/2) * se.loglogS.3)
+    LL.3 <- S.3^exp(-stats::qnorm(conf.level/2) * se.loglogS.3)
+    UL.3 <- S.3^exp(stats::qnorm(conf.level/2) * se.loglogS.3)
     if(all(is.na(Var.h.3))){
       se.h.3 <- NA
     } else{
       se.h.3 <- sqrt(diag(Var.h.3))
       se.h.3[is.nan(se.h.3)] <- 0
     }
-    LLh.3 <- h.3 + qnorm(conf.level/2) * se.h.3 #sign reversed because 0.025 quantile is negative
-    ULh.3 <- h.3 - qnorm(conf.level/2) * se.h.3
+    LLh.3 <- h.3 + stats::qnorm(conf.level/2) * se.h.3 #sign reversed because 0.025 quantile is negative
+    ULh.3 <- h.3 - stats::qnorm(conf.level/2) * se.h.3
     LLh.3[LLh.3 < 0] <- 0
 
     T2h <- T2
@@ -762,6 +761,7 @@ predict.Freq_HReg2 <- function (object, xnew = NULL, x1new = NULL, x2new = NULL,
   return(value)
 }
 
+#' @export
 plot.pred.Freq_HReg2 <- function (x, plot.est = "Haz", xlab = NULL, ylab = NULL, ...)
 {
   obj <- x
@@ -795,69 +795,69 @@ plot.pred.Freq_HReg2 <- function (x, plot.est = "Haz", xlab = NULL, ylab = NULL,
       }
     }
     if (plot.est == "Surv") {
-      par(mfrow = c(1, 3))
+      graphics::par(mfrow = c(1, 3))
       plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                S[1](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = yLim)
-      lines(obj$S.1$time, obj$S.1$S.1, col = "blue", lwd = 3)
-      lines(obj$S.1$time, obj$S.1$LL.1, col = "blue", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = yLim)
+      graphics::lines(obj$S.1$time, obj$S.1$S.1, col = "blue", lwd = 3)
+      graphics::lines(obj$S.1$time, obj$S.1$LL.1, col = "blue", lwd = 3,
             lty = 3)
-      lines(obj$S.1$time, obj$S.1$UL.1, col = "blue", lwd = 3,
+      graphics::lines(obj$S.1$time, obj$S.1$UL.1, col = "blue", lwd = 3,
             lty = 3)
       plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                S[2](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = yLim)
-      lines(obj$S.2$time, obj$S.2$S.2, col = "red", lwd = 3)
-      lines(obj$S.2$time, obj$S.2$LL.2, col = "red", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = yLim)
+      graphics::lines(obj$S.2$time, obj$S.2$S.2, col = "red", lwd = 3)
+      graphics::lines(obj$S.2$time, obj$S.2$LL.2, col = "red", lwd = 3,
             lty = 3)
-      lines(obj$S.2$time, obj$S.2$UL.2, col = "red", lwd = 3,
+      graphics::lines(obj$S.2$time, obj$S.2$UL.2, col = "red", lwd = 3,
             lty = 3)
       plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                S[3](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = yLim)
-      lines(obj$S.3$time, obj$S.3$S.3, col = "red", lwd = 3)
-      lines(obj$S.3$time, obj$S.3$LL.3, col = "red", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = yLim)
+      graphics::lines(obj$S.3$time, obj$S.3$S.3, col = "red", lwd = 3)
+      graphics::lines(obj$S.3$time, obj$S.3$LL.3, col = "red", lwd = 3,
             lty = 3)
-      lines(obj$S.3$time, obj$S.3$UL.3, col = "red", lwd = 3,
+      graphics::lines(obj$S.3$time, obj$S.3$UL.3, col = "red", lwd = 3,
             lty = 3)
     }
     if (plot.est == "Haz") {
-      par(mfrow = c(1, 3))
+      graphics::par(mfrow = c(1, 3))
       plot(range(T2seq), range(yLim), xlab = xlab[1], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                h[1](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = round(yLim, 4))
-      lines(obj$h.1$time, obj$h.1$h.1, col = "blue", lwd = 3)
-      lines(obj$h.1$time, obj$h.1$LL.1, col = "blue", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = round(yLim, 4))
+      graphics::lines(obj$h.1$time, obj$h.1$h.1, col = "blue", lwd = 3)
+      graphics::lines(obj$h.1$time, obj$h.1$LL.1, col = "blue", lwd = 3,
             lty = 3)
-      lines(obj$h.1$time, obj$h.1$UL.1, col = "blue", lwd = 3,
+      graphics::lines(obj$h.1$time, obj$h.1$UL.1, col = "blue", lwd = 3,
             lty = 3)
       plot(range(T2seq), range(yLim), xlab = xlab[2], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                h[2](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = round(yLim, 4))
-      lines(obj$h.2$time, obj$h.2$h.2, col = "red", lwd = 3)
-      lines(obj$h.2$time, obj$h.2$LL.2, col = "red", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = round(yLim, 4))
+      graphics::lines(obj$h.2$time, obj$h.2$h.2, col = "red", lwd = 3)
+      graphics::lines(obj$h.2$time, obj$h.2$LL.2, col = "red", lwd = 3,
             lty = 3)
-      lines(obj$h.2$time, obj$h.2$UL.2, col = "red", lwd = 3,
+      graphics::lines(obj$h.2$time, obj$h.2$UL.2, col = "red", lwd = 3,
             lty = 3)
       plot(range(T2seq), range(yLim), xlab = xlab[3], ylab = ylab,
            type = "n", main = expression(paste("Estimated ",
                                                h[3](t), "")), axes = FALSE)
-      axis(1, at = T2seq)
-      axis(2, at = round(yLim, 4))
-      lines(obj$h.3$time, obj$h.3$h.3, col = "red", lwd = 3)
-      lines(obj$h.3$time, obj$h.3$LL.3, col = "red", lwd = 3,
+      graphics::axis(1, at = T2seq)
+      graphics::axis(2, at = round(yLim, 4))
+      graphics::lines(obj$h.3$time, obj$h.3$h.3, col = "red", lwd = 3)
+      graphics::lines(obj$h.3$time, obj$h.3$LL.3, col = "red", lwd = 3,
             lty = 3)
-      lines(obj$h.3$time, obj$h.3$UL.3, col = "red", lwd = 3,
+      graphics::lines(obj$h.3$time, obj$h.3$UL.3, col = "red", lwd = 3,
             lty = 3)
     }
   }

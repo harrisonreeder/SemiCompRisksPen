@@ -14,6 +14,9 @@ cv_validate(
 \item{cv_predict_out_list}{is an object output from \code{cv_predict} function}
 
 \item{metrics}{is a vector of strings naming what metrics to compute. Options are "brier", "auc", "hum", "ccp",and "pdi".}
+
+\item{verbose}{Numeric indicating the amount of intermediate information that should be printed during the cross-validation process.
+Larger numbers correspond to more printed information.}
 }
 \value{
 if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix

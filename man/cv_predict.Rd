@@ -65,6 +65,8 @@ If set to \code{NULL}, will be generated automatically using \code{\link{get_sta
 
 \item{optim_method}{a string naming which \code{optim} method should be used.}
 
+\item{n_folds}{Integer value specifying the number of partitions to divide the data into for cross validation}
+
 \item{t_cutoff}{Numeric vector indicating the time(s) to compute the risk profile.}
 
 \item{t_start}{Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.}
@@ -80,6 +82,9 @@ if 'type' is set to 'conditional'}
 \item{h3_tv}{String indicating whether there is an effect of t1 on hazard 3.}
 
 \item{tv_knots}{for piecewise effect of t1 in h3, these are the knots at which the effect jumps}
+
+\item{verbose}{Numeric indicating the amount of intermediate information that should be printed during the cross-validation process.
+Larger numbers correspond to more printed information.}
 }
 \value{
 if Xmat has only one row, and t_cutoff is a scalar, then returns a 4 element row matrix

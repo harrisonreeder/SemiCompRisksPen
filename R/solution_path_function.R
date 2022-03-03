@@ -54,14 +54,20 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
   #Otherwise, put it into matrix format
   # (note, this admits a 3-column matrix to let different transitions have different values)
   lambda_path <- if(is.null(lambda_path)) as.matrix(0) else as.matrix(lambda_path)
-  lambda_length <- nrow(lambda_path)
-  colnames(lambda_path) <- paste0("lambda",1:ncol(lambda_path))
+  lambda_length <- NROW(lambda_path)
+  if(NCOL(lambda_path) == 1){
+    lambda_path <- cbind(lambda_path,lambda_path,lambda_path)
+  }
+  colnames(lambda_path) <- paste0("lambda",1:NCOL(lambda_path))
 
   #If lambda_fusedcoef_path is NULL, set it equal to 0 (aka no fused regularization)
   #Otherwise, put it into matrix format
   # (note, this admits a 3-column matrix to let different transitions have different values)
   lambda_fusedcoef_path <- if(is.null(lambda_fusedcoef_path)) as.matrix(0) else as.matrix(lambda_fusedcoef_path)
-  lambda_fusedcoef_length <- nrow(lambda_fusedcoef_path)
+  lambda_fusedcoef_length <- NROW(lambda_fusedcoef_path)
+  if(NCOL(lambda_path) == 1){
+    lambda_fusedcoef_path <- cbind(lambda_fusedcoef_path,lambda_fusedcoef_path,lambda_fusedcoef_path)
+  }
   colnames(lambda_fusedcoef_path) <- paste0("lambda_fusedcoef",1:ncol(lambda_fusedcoef_path))
 
   #If mu_smooth_path is NULL, set it equal to 0 (aka no fused smoothing)
@@ -146,16 +152,14 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
 
       if(verbose >= 1){
         print(paste0("step: ",lambda_iter,
-                     " lambda: ",lambda,
-                     " lambda_fusedcoef: ",lambda_fusedcoef))#, " mu_smooth_fused: ",mu_smooth_fused, " extra_start: ", extra_start_iter))
+                     " lambda: ",paste(round(lambda,6),collapse = " "),
+                     " lambda_fusedcoef: ",paste(round(lambda_fusedcoef,6),collapse = " ")))#, " mu_smooth_fused: ",mu_smooth_fused, " extra_start: ", extra_start_iter))
       }
 
       #monitor to track which random start achieves the lowest objective value
       best_nll_pen <- Inf
 
       #INNER LOOP: LOOPING THROUGH EXTRA START VALUES
-      #Unfortunately this sort of disrupts the point of having multiple mu_smooth values, but because we're
-      #moving away from that approach anyways to a single mu_smooth value, then this is fine.
       for(extra_start_iter in 1:(extra_starts+1)){
 
         #if this is the first time through, admit the warm start approach, otherwise randomize the start value

@@ -88,7 +88,7 @@ get_default_knots_list <- function(y1,y2,delta1,delta2,p01,p02,p03,hazard,model)
 #'   each column giving the corresponding basis function value.
 #' @export
 get_basis <- function(x,knots,hazard,deriv=FALSE,flexsurv_compatible=FALSE){
-
+  if(flexsurv_compatible==TRUE){stop("no longer allow spline specification as in flexsurv")}
   #the exact form of the knots passed into this function come from the above function
 
 
@@ -104,21 +104,21 @@ get_basis <- function(x,knots,hazard,deriv=FALSE,flexsurv_compatible=FALSE){
     temp_log <- log(x)
     temp_log[is.infinite(temp_log)] <- NA
     if(deriv){
-      if(flexsurv_compatible){
-        basis_out <- flexsurv::dbasis(x=temp_log,knots=knots_log)
-        basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
-      } else{
+      # if(flexsurv_compatible){
+      #   basis_out <- flexsurv::dbasis(x=temp_log,knots=knots_log)
+      #   basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
+      # } else{
         basis_out <- ns_d(x = temp_log,knots = knots_log[-c(1,length(knots_log))],Boundary.knots = knots_log[c(1,length(knots_log))],intercept = TRUE)
         basis_out[is.na(basis_out)] <- 1 #can't set this to 0, because it is then logged and that causes a mess even when it multiplies with delta1delta2 and would otherwise be 0
-        }
+        # }
     } else{
-      if(flexsurv_compatible){
-        basis_out <- flexsurv::basis(x = temp_log,knots = knots_log)
-        basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
-      } else{
+      # if(flexsurv_compatible){
+      #   basis_out <- flexsurv::basis(x = temp_log,knots = knots_log)
+      #   basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
+      # } else{
         basis_out <- splines::ns(x = temp_log,knots = knots_log[-c(1,length(knots_log))],Boundary.knots = knots_log[c(1,length(knots_log))],intercept = TRUE)
         basis_out[is.na(basis_out)] <- 0 #This doesn't cause a problem for illness-death model because the changed rows are zeroed out of the likelihood by deltas
-        }
+        # }
     }
   } else {return(NULL)}
 

@@ -30,6 +30,11 @@ then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameter
 
 \item{hazard}{String specifying the form of the baseline hazard.}
 
+\item{knots_list}{Used for hazard specifications besides Weibull, a
+list of three increasing sequences of integers, each corresponding to
+the knots for the flexible model on the corresponding transition baseline hazard. If
+\code{NULL}, will be created by \code{\link{get_default_knots_list}}.}
+
 \item{t_cutoff}{Numeric vector indicating the time(s) to compute the risk profile.}
 
 \item{t_start}{Numeric scalar indicating the dynamic start time to compute the risk profile. Set to 0 by default.}
