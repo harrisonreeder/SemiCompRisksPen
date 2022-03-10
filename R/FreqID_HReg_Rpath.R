@@ -10,7 +10,7 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                               warm_start=TRUE, step_size_min=1e-6, step_size_max=1e6, step_size_init=1,
                               step_size_scale=0.5, #no checks implemented on these values!!
                               step_delta=0.5, maxit=300, extra_starts=0,
-                              conv_crit = "nll_pen_change", conv_tol=1e-6,
+                              conv_crit = "nll_pen_change", conv_tol=1e-6, standardize=TRUE,
                               verbose=0){
 
   # To start, I'm going to implement the PISTA algorithm of Wang et al (2014).  I know it is somewhat deficient compared to
@@ -60,6 +60,19 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
                                  data=data))
   Xmat3 <- as.matrix(stats::model.frame(stats::formula(form2, lhs=0, rhs=3),
                                  data=data))
+
+  if(standardize){
+    Xmat1 <- scale(Xmat1)
+    scaling_center1 <- attr(Xmat1,"scaled:center")
+    scaling_factor1 <- attr(Xmat1,"scaled:scale")
+    Xmat2 <- scale(Xmat2)
+    scaling_center2 <- attr(Xmat2,"scaled:center")
+    scaling_factor2 <- attr(Xmat2,"scaled:scale")
+    Xmat3 <- scale(Xmat3)
+    scaling_center3 <- attr(Xmat3,"scaled:center")
+    scaling_factor3 <- attr(Xmat3,"scaled:scale")
+  }
+
   n <- length(y1)
 
   ##PREPARE KNOTS AND BASIS FUNCTIONS FOR FLEXIBLE MODELS##
@@ -134,10 +147,13 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
     }
     #for now, we're just gonna let the same lambda govern all the betas, we'll work on the rest later.
     #note that we already 'have the solution' for the max value, because it is the startVal, FIX
-    lambda_path <- as.matrix(lambda0 * step_eta^(0:(N_path_steps-1))) #
+    lambda_path_vec <- lambda0 * step_eta^(0:(N_path_steps-1)) #
+    lambda_path <- cbind(lambda_path_vec,lambda_path_vec,lambda_path_vec)
   } else{
     step_eta <- NULL
-    lambda_path <- as.matrix(lambda_path)
+    if(NCOL(lambda_path)==1){
+      lambda_path <- cbind(lambda_path,lambda_path,lambda_path)
+    }
   }
 
   colnames(lambda_path) <- paste0("lambda",1:ncol(lambda_path))
@@ -186,8 +202,14 @@ FreqID_HReg_Rpath <- function(Formula, data, na.action="na.fail", subset=NULL,
 
   solution_path_out$step_eta <- step_eta
 
-  return(solution_path_out)
+  if(standardize){
+    solution_path_out$ests[,-(1:nP0)] <-
+      sweep(x = solution_path_out$ests[,-(1:nP0)],
+            STATS = c(scaling_factor1,scaling_factor2,scaling_factor3),
+            MARGIN = 2, FUN = "/")
+  }
 
+  return(solution_path_out)
 }
 
 
