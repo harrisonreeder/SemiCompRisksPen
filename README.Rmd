@@ -20,42 +20,11 @@ knitr::opts_chunk$set(
 [![CRAN status](https://www.r-pkg.org/badges/version/SemiCompRisksPen)](https://CRAN.R-project.org/package=SemiCompRisksPen)
 <!-- badges: end -->
 
-The goal of SemiCompRisksPen is to ...
+The goal of SemiCompRisksPen is to perform penalized estimation of fraily-based parametric illness-death models for semi-competing risks, as described in:
 
-## Installation
+Reeder HT, Lu J, Haneuse S. Penalized estimation of frailty‐based illness–death models for semi‐competing risks. Biometrics. 2023 Sep;79(3):1657-69.
 
-You can install the released version of SemiCompRisksPen from [CRAN](https://CRAN.R-project.org) with:
+*This package has largely been superceded by the package SemiCompRisksFreq* which incorporates
+the functionality of this package as well as many other features. So, for most users
+it will be preferable to download the package here: [SemiCompRisksFreq](https://github.com/harrisonreeder/SemiCompRisksFreq)
 
-``` r
-install.packages("SemiCompRisksPen")
-```
-
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-```{r example}
-library(SemiCompRisksPen)
-## basic example code
-```
-
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
-```
-
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub!
-
-
-## Code of Conduct
-  
-Please note that the SemiCompRisksPen project is released with a [Contributor Code of Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html). By contributing to this project, you agree to abide by its terms.

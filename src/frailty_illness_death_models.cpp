@@ -10,16 +10,16 @@ arma::vec getCommonVec(const arma::vec& delta1,const arma::vec& delta2,const arm
 Royston-Parmar
 *******/
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 double nlogLikRP_uni(const arma::vec& para, const arma::vec& delta, const arma::vec& y,
 					const arma::mat& basis, const arma::mat& dbasis, const arma::mat& X){
 
 	//define constants
-	int p0 = basis.n_cols; 
-	int p1 = X.n_cols; 
+	int p0 = basis.n_cols;
+	int p1 = X.n_cols;
 	int n = X.n_rows;
 
-	arma::vec phi = para(arma::span(0, p0-1)); 
+	arma::vec phi = para(arma::span(0, p0-1));
 
 	//define linear predictors
 	arma::vec eta;
@@ -35,7 +35,7 @@ double nlogLikRP_uni(const arma::vec& para, const arma::vec& delta, const arma::
 	arma::vec sprime = dbasis * phi;
 
 	//delta * (log lambda) + log(survival)
-	double obj_val = arma::accu( delta % (arma::log(sprime) + s + eta - arma::log(y)) - arma::exp(s + eta)  ); 
+	double obj_val = arma::accu( delta % (arma::log(sprime) + s + eta - arma::log(y)) - arma::exp(s + eta)  );
 	//note that in theory the '-delta*log(y)' term can be proportioned out, but I added it in to keep a properly comparable -2LL scale for AIC
 
 	return(-obj_val);
@@ -43,15 +43,15 @@ double nlogLikRP_uni(const arma::vec& para, const arma::vec& delta, const arma::
 
 
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::vec ngradRP_uni(const arma::vec& para, const arma::vec& y, const arma::vec& delta, const arma::mat& basis, const arma::mat& dbasis, const arma::mat& X){
 
 	//define constants
-	int p0 = basis.n_cols; 
-	int p1 = X.n_cols; 
+	int p0 = basis.n_cols;
+	int p1 = X.n_cols;
 	int n = X.n_rows;
 
-	arma::vec phi = para(arma::span(0, p0-1)); 
+	arma::vec phi = para(arma::span(0, p0-1));
 
 	//define linear predictors
 	arma::vec eta;
@@ -72,25 +72,25 @@ arma::vec ngradRP_uni(const arma::vec& para, const arma::vec& y, const arma::vec
 
 	if(p1 > 0){
 		temp_scorevec(arma::span(p0,p0+p1-1)) = X.t() * ( delta - arma::exp(s + eta) );
-	}	
+	}
 	return(-temp_scorevec);
 
 }
 
-// [[Rcpp::export]] 
-double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const arma::vec& y2, 
-							 const arma::vec& delta1, const arma::vec& delta2, 
-						   	 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, 
-						   	 const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3, 
+// [[Rcpp::export]]
+double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const arma::vec& y2,
+							 const arma::vec& delta1, const arma::vec& delta2,
+						   	 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3,
+						   	 const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3,
 						   	 const arma::mat& dbasis1, const arma::mat& dbasis2, const arma::mat& dbasis3){
 	//define constants
 	int p01 = basis1.n_cols; int p02 = basis2.n_cols;	int p03 = basis3.n_cols;
-	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	
+	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;
 	int n = X1.n_rows;
 
 	arma::vec phi1 = para(arma::span(0, p01-1));
-	arma::vec phi2 = para(arma::span(p01, p01+p02-1)); 	
-	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1)); 	
+	arma::vec phi2 = para(arma::span(p01, p01+p02-1));
+	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1));
 	double h = para(p01+p02+p03);
 
 	//define linear predictors
@@ -130,35 +130,35 @@ double nlogLikRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const a
 	arma::vec s3prime = dbasis3 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
-	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
+	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2,
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
 	arma::vec AVec;
 	AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % arma::exp(s3 + eta3);
 
 
-	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1)) 
+	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1))
 	+ (1-delta1) % delta2 % ( arma::log(s2prime) + s2 + eta2 - arma::log(y1) )
 	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - logdiff + log1p( exp(h) )  )
 	- (exp(-h) + delta1 + delta2) % arma::log1p( exp(h) * AVec )  ) ;
 
-  return -obj_val;    
+  return -obj_val;
 }
 
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 double nlogLikRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const arma::vec& y2,
-							const arma::vec& delta1, const arma::vec& delta2, 
-						    const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, 
-						    const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3, const arma::mat& basis3_y1, 
+							const arma::vec& delta1, const arma::vec& delta2,
+						    const arma::mat& X1, const arma::mat& X2, const arma::mat& X3,
+						    const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3, const arma::mat& basis3_y1,
 						    const arma::mat& dbasis1, const arma::mat& dbasis2, const arma::mat& dbasis3){
 	//define constants
 	int p01 = basis1.n_cols; int p02 = basis2.n_cols;	int p03 = basis3.n_cols;
-	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	
+	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;
 	int n = X1.n_rows;
 
 	arma::vec phi1 = para(arma::span(0, p01-1));
-	arma::vec phi2 = para(arma::span(p01, p01+p02-1)); 	
-	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1)); 	
+	arma::vec phi2 = para(arma::span(p01, p01+p02-1));
+	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1));
 	double h = para(p01+p02+p03);
 
 	//define linear predictors
@@ -194,34 +194,34 @@ double nlogLikRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const ar
 	arma::vec s3_y1 = basis3_y1 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
-	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
+	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2,
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
 	arma::vec AVec;
 	AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % (arma::exp(s3 + eta3) - arma::exp(s3_y1 + eta3));
 
 
-	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1) ) 
+	double obj_val = arma::accu(  delta1 % ( arma::log(s1prime) + s1 + eta1 - arma::log(y1) )
 	+ (1-delta1) % delta2 % ( arma::log(s2prime) + s2 + eta2 - arma::log(y1) )
 	+ delta1 % delta2 % ( arma::log(s3prime) + s3 + eta3 - arma::log(y2) + log1p( exp(h) )  )
 	- (exp(-h) + delta1 + delta2) % arma::log1p( exp(h) * AVec )  ) ;
 
-  return -obj_val;    
+  return -obj_val;
 }
 
 //This function implements both markov and semi-markov specifications, but I think I'll need to write separate functions for the grad and hess
-// [[Rcpp::export]] 
-arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
-						   	  const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, 
-						      const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3, 
+// [[Rcpp::export]]
+arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
+						   	  const arma::mat& X1, const arma::mat& X2, const arma::mat& X3,
+						      const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3,
 						      const arma::mat& dbasis1, const arma::mat& dbasis2, const arma::mat& dbasis3){
 	//define constants
 	int p01 = basis1.n_cols; int p02 = basis2.n_cols;	int p03 = basis3.n_cols;
-	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	
+	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;
 	int n = X1.n_rows;
 
 	arma::vec phi1 = para(arma::span(0, p01-1));
-	arma::vec phi2 = para(arma::span(p01, p01+p02-1)); 	
-	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1)); 	
+	arma::vec phi2 = para(arma::span(p01, p01+p02-1));
+	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1));
 	double h = para(p01+p02+p03);
 
 	//define linear predictors
@@ -254,7 +254,7 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 	arma::vec s3prime = dbasis3 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
-	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
+	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2,
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
 	arma::vec AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % arma::exp(s3 + eta3);
 
@@ -264,16 +264,16 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 
 
 	//phi1
-	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1)) 
+	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1))
 											+ basis1.t() * (delta1 - commonVec % arma::exp(h + s1 + eta1) );
 
 	//phi2
-	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1)) 
+	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1))
 													+ basis2.t() * ((1-delta1) % delta2 - commonVec % arma::exp(h + s2 + eta2) );
 
 	//phi3
-	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime,-1)) 
-													+ basis3.t() * (delta1 % delta2 - 
+	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime,-1))
+													+ basis3.t() * (delta1 % delta2 -
 														delta1 % commonVec % arma::exp(h + s3 + eta3) );  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2-y1). Helps make it more robust
 
 	//h
@@ -291,7 +291,7 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 
 	//beta3 (what ina calls u4)
 	if(p3 > 0){
-		temp_scorevec(arma::span(1 + p01 + p02 + p03 + p1 + p2,1 + p01 + p02 + p03 + p1 + p2 + p3 - 1)) = X3.t() * (delta1 % delta2 - 
+		temp_scorevec(arma::span(1 + p01 + p02 + p03 + p1 + p2,1 + p01 + p02 + p03 + p1 + p2 + p3 - 1)) = X3.t() * (delta1 % delta2 -
 								 delta1 % commonVec % arma::exp(s3 + h + eta3)); //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2-y1)
 	}
 
@@ -302,19 +302,19 @@ arma::vec ngradRP_ID_frail_SM(const arma::vec& para, const arma::vec& y1, const 
 
 
 //This function implements both markov and semi-markov specifications, but I think I'll need to write separate functions for the grad and hess
-// [[Rcpp::export]] 
-arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
-						     const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, 
+// [[Rcpp::export]]
+arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
+						     const arma::mat& X1, const arma::mat& X2, const arma::mat& X3,
 						     const arma::mat& basis1, const arma::mat& basis2, const arma::mat& basis3, const arma::mat& basis3_y1,
 						     const arma::mat& dbasis1, const arma::mat& dbasis2, const arma::mat& dbasis3){
 	//define constants
 	int p01 = basis1.n_cols; int p02 = basis2.n_cols;	int p03 = basis3.n_cols;
-	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	
+	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;
 	int n = X1.n_rows;
 
 	arma::vec phi1 = para(arma::span(0, p01-1));
-	arma::vec phi2 = para(arma::span(p01, p01+p02-1)); 	
-	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1)); 	
+	arma::vec phi2 = para(arma::span(p01, p01+p02-1));
+	arma::vec phi3 = para(arma::span(p01+p02, p01+p02+p03-1));
 	double h = para(p01+p02+p03);
 
 	//define linear predictors
@@ -350,7 +350,7 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 	arma::vec s3_y1 = basis3_y1 * phi3;
 
 	//my big concern is what to do in the semi-markov setting, when log(y2-y1)=-Infty is not well characterized here?
-	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2, 
+	//If we look at where this comes into play, it arises in the likelihood term that is already multiplied by delta1*delta2,
 	//and then in AVec so really we just need to ensure that observations with delta1=0 are zeroed out in the final sum.
 	arma::vec AVec = arma::exp(s1 + eta1) + arma::exp(s2 + eta2) + delta1 % (arma::exp(s3 + eta3) - arma::exp(s3_y1 + eta3));
 
@@ -359,16 +359,16 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 	arma::vec commonVec = getCommonVec(delta1, delta2, AVec, h);
 
 	//phi1
-	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1)) 
+	temp_scorevec(arma::span(0, p01 - 1)) = dbasis1.t() * (delta1 % arma::pow(s1prime,-1))
 											+ basis1.t() * (delta1 - commonVec % arma::exp(h + s1 + eta1) );
 
 	//phi2
-	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1)) 
+	temp_scorevec(arma::span(p01, p01 + p02 - 1)) = dbasis2.t() * ((1-delta1) % delta2 % arma::pow(s2prime,-1))
 													+ basis2.t() * ((1-delta1) % delta2 - commonVec % arma::exp(h + s2 + eta2) );
 
 	//phi3
-	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime, -1)) 
-													+ basis3.t() * (delta1 % delta2) 
+	temp_scorevec(arma::span(p01 + p02, p01 + p02 + p03 - 1)) = dbasis3.t() * (delta1 % delta2 % arma::pow(s3prime, -1))
+													+ basis3.t() * (delta1 % delta2)
 													- (basis3.t() * (delta1 % commonVec % arma::exp(h + s3 + eta3))
 													   - basis3_y1.t() * (delta1 % commonVec % arma::exp(h + s3_y1 + eta3)));  //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
 
@@ -388,7 +388,7 @@ arma::vec ngradRP_ID_frail_M(const arma::vec& para, const arma::vec& y1, const a
 
 	//beta3 (what ina calls u4)
 	if(p3 > 0){
-		temp_scorevec(arma::span(1 + p01 + p02 + p03 + p1 + p2,1 + p01 + p02 + p03 + p1 + p2 + p3 - 1)) = X3.t() * (delta1 % delta2 - 
+		temp_scorevec(arma::span(1 + p01 + p02 + p03 + p1 + p2,1 + p01 + p02 + p03 + p1 + p2 + p3 - 1)) = X3.t() * (delta1 % delta2 -
 								 delta1 % commonVec % arma::exp(h + eta3) % (arma::exp(s3) - arma::exp(s3_y1))); //note, extra delta1 multiplied to last term because only those terms contribute nonzero H(y2)-H(y1). Helps make it more robust.
 	}
 
@@ -414,8 +414,8 @@ arma::vec getAVecWB_SM(const arma::vec& y1,const arma::vec& y2,
 	return getLambda0gWB(y1,a1,k1) % arma::exp(eta1) + getLambda0gWB(y1,a2,k2) % arma::exp(eta2) + getLambda0gWB(y2-y1,a3,k3) % arma::exp(eta3);
 }
 
-arma::vec getAVecWB_M(const arma::vec& y1,const arma::vec& y2, 
-					  double k1,double a1, double k2,double a2, double k3, double a3, 
+arma::vec getAVecWB_M(const arma::vec& y1,const arma::vec& y2,
+					  double k1,double a1, double k2,double a2, double k3, double a3,
 					  const arma::vec& eta1, const arma::vec& eta2, const arma::vec& eta3){
 	//this is for markov specification
 	return getLambda0gWB(y1,a1,k1) % arma::exp(eta1) + getLambda0gWB(y1,a2,k2) % arma::exp(eta2) + getLambda0gWB(y2,a3,k3) % arma::exp(eta3) - getLambda0gWB(y1,a3,k3) % arma::exp(eta3);
@@ -430,9 +430,9 @@ arma::vec getAVecWB_M(const arma::vec& y1,const arma::vec& y2,
 
 
 //This function implements both markov and semi-markov specifications, but I think I'll need to write separate functions for the grad and hess
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 double nlogLikWB_ID_frail(const arma::vec& para,
-						 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
+						 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 						 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, const std::string model = "semi-markov"){
 	//define constants
 	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	int n = X1.n_rows;
@@ -474,14 +474,14 @@ double nlogLikWB_ID_frail(const arma::vec& para,
 	}
 
 	//this is the slow way of writing it, I could simplify to make this a bit quicker
-	arma::vec LL1 = delta1 % delta2 % (  a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1 
+	arma::vec LL1 = delta1 % delta2 % (  a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1
 									   + a3 + k3 + (exp(a3) - 1) * logdiff       + eta3
 									   + log1p(exp(h)) //added because I think it's missing
 									   - (exp(-h) + 2) * arma::log1p(exp(h) * AVec)
 									  ); //LL1
-	arma::vec LL3 = delta1 % (1-delta2) % (a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1 
+	arma::vec LL3 = delta1 % (1-delta2) % (a1 + k1 + (exp(a1) - 1) * arma::log(y1) + eta1
 											- (exp(-h)+1) * arma::log1p(exp(h) * AVec)); //LL3	;
-	arma::vec LL2 = (1-delta1) % delta2 % (a2 + k2 + (exp(a2) - 1) * arma::log(y1) + eta2 
+	arma::vec LL2 = (1-delta1) % delta2 % (a2 + k2 + (exp(a2) - 1) * arma::log(y1) + eta2
 											- (exp(-h)+1) * arma::log1p(exp(h) * AVec)); // LL 2
 	arma::vec LL4 = (1-delta1) % (1-delta2) % (-exp(-h) * arma::log1p(exp(h) * AVec)); // LL4
 
@@ -492,9 +492,9 @@ double nlogLikWB_ID_frail(const arma::vec& para,
 
 
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::vec ngradWB_ID_frail_SM(const arma::vec& para,
-							  const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
+							  const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 							  const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
 	//define constants
 	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	int n = X1.n_rows;
@@ -544,17 +544,17 @@ arma::vec ngradWB_ID_frail_SM(const arma::vec& para,
 	temp_scorevec(1) = arma::accu( delta1 % (1 + exp(a1) * arma::log(y1)) -
 									exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1));
 	//k2 (what ina calls u7)
-	temp_scorevec(2) = arma::accu( (1-delta1) % delta2 - 
+	temp_scorevec(2) = arma::accu( (1-delta1) % delta2 -
 									commonVec % Lambda02 % arma::exp(h+eta2));
 	//a2 (what ina calls u8)
-	temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - 
+	temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) -
 									commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1) );
 	//k3 (what ina calls u9)
-	temp_scorevec(4) = arma::accu( delta1 % delta2 - 
+	temp_scorevec(4) = arma::accu( delta1 % delta2 -
 									commonVec % Lambda03 % arma::exp(h+eta3));
 
 	//a3 (what ina calls u10)
-	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * logdiff) - 
+	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * logdiff) -
 									commonVec % Lambda03 % arma::exp(h+a3+eta3) % logdiff );
 	//h (what ina calls u1)
 	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec));
@@ -579,7 +579,7 @@ arma::vec ngradWB_ID_frail_SM(const arma::vec& para,
 
 //this is the gradient with the markov assumption
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::vec ngradWB_ID_frail_M(const arma::vec& para,
 							 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 							 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
@@ -628,18 +628,18 @@ arma::vec ngradWB_ID_frail_M(const arma::vec& para,
 	temp_scorevec(1) = arma::accu( delta1 % (1 + exp(a1) * arma::log(y1)) -
 									exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1));
 	//k2 (what ina calls u7)
-	temp_scorevec(2) = arma::accu( (1-delta1) % delta2 - 
+	temp_scorevec(2) = arma::accu( (1-delta1) % delta2 -
 									commonVec % Lambda02 % arma::exp(h+eta2));
 	//a2 (what ina calls u8)
-	temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - 
+	temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) -
 									commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1) );
 
 	//k3 (what ina calls u9)
-	temp_scorevec(4) = arma::accu( delta1 % delta2 - 
+	temp_scorevec(4) = arma::accu( delta1 % delta2 -
 									commonVec % (Lambda03y2 - Lambda03y1) % arma::exp(h+eta3));
 
 	//a3 (what ina calls u10)
-	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) - 
+	temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) -
 									commonVec % arma::exp(h+a3+eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) );
 	//h (what ina calls u1)
 	temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec));
@@ -665,7 +665,7 @@ arma::vec ngradWB_ID_frail_M(const arma::vec& para,
 
 //this is the hessian with the semi-markov assumption
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 							  const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 							  const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
@@ -716,7 +716,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	arma::vec dAVecda1 = Lambda01 % arma::exp(a1 + eta1) % arma::log(y1);
 	arma::vec dAVecda2 = Lambda02 % arma::exp(a2 + eta2) % arma::log(y1);
 	arma::vec dAVecda3 = Lambda03 % arma::exp(a3 + eta3) % logdiff;
-	
+
 	arma::vec dcommonVecdk1 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk1;
 	arma::vec dcommonVecdk2 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk2;
 	arma::vec dcommonVecdk3 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk3;
@@ -729,7 +729,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 
 	//***********k1 section***********//
 	//temp_scorevec(0) = arma::accu(delta1 - commonVec % Lambda01 % arma::exp(h + eta1));
-	
+
 	//k1k1
 	temp_hessmat(0,0) = arma::accu( - arma::exp(h + eta1) % ( dcommonVecdk1 % Lambda01 + commonVec % Lambda01 ) );
 	//k1a1
@@ -748,7 +748,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	temp_hessmat(0,5) = arma::accu( - arma::exp(h + eta1) % ( dcommonVecda3 % Lambda01 ) );
 	temp_hessmat(5,0) = temp_hessmat(0,5);
 	//k1h
-	temp_hessmat(6,0) = arma::accu( dAVecdk1 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,0) = arma::accu( dAVecdk1 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk1 + commonVec % dAVecdk1 ));
 	temp_hessmat(0,6) = temp_hessmat(6,0);
 
@@ -770,7 +770,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	temp_hessmat(5,2) = arma::accu( - arma::exp(h + eta2) % ( dcommonVecda3 % Lambda02 ) );
 	temp_hessmat(2,5) = temp_hessmat(5,2);
 
-	//***********k3 section***********// 
+	//***********k3 section***********//
 	//temp_scorevec(4) = arma::accu( delta1 % delta2 - commonVec % Lambda03 % arma::exp(h+eta3));
 
 	//k3k3
@@ -785,33 +785,33 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	temp_hessmat(5,4) = arma::accu( - arma::exp(h + eta3) % ( dcommonVecda3 % Lambda03 + exp(a3) * commonVec % Lambda03 % logdiff ) );
 	temp_hessmat(4,5) = temp_hessmat(5,4);
 
-	//***********a1 section**********// 
+	//***********a1 section**********//
 	//temp_scorevec(1) = arma::accu( delta1 % (1 + exp(a1) * arma::log(y1)) - exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1));
-	//rewritten as 		 arma::accu( delta1 + exp(a1) * delta1 % arma::log(y1) - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * commonVec % Lambda01) ); 
+	//rewritten as 		 arma::accu( delta1 + exp(a1) * delta1 % arma::log(y1) - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * commonVec % Lambda01) );
 
 	//a1a1
-	temp_hessmat(1,1) = arma::accu( exp(a1) * delta1 % arma::log(y1) - 
-									arma::exp(h+eta1) % arma::log(y1) % ( exp(a1) * commonVec % Lambda01 + 
-																		  exp(a1) * dcommonVecda1 % Lambda01 + 
-																		  exp(2 * a1) * commonVec % Lambda01 % arma::log(y1) ) ); 
+	temp_hessmat(1,1) = arma::accu( exp(a1) * delta1 % arma::log(y1) -
+									arma::exp(h+eta1) % arma::log(y1) % ( exp(a1) * commonVec % Lambda01 +
+																		  exp(a1) * dcommonVecda1 % Lambda01 +
+																		  exp(2 * a1) * commonVec % Lambda01 % arma::log(y1) ) );
 	//a1a2
-	temp_hessmat(1,3) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda2 % Lambda01) ); 
+	temp_hessmat(1,3) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda2 % Lambda01) );
 	temp_hessmat(3,1) = temp_hessmat(1,3);
 	//a1a3
-	temp_hessmat(1,5) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda3 % Lambda01) ); 
+	temp_hessmat(1,5) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda3 % Lambda01) );
 	temp_hessmat(5,1) = temp_hessmat(1,5);
 
-	//***********a2 section**********// 
+	//***********a2 section**********//
 	//temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1) );
 
 	//rewritten as arma::accu( (1-delta1) % delta2 + exp(a2) * (1-delta1) % delta2 % arma::log(y1) - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * commonVec % Lambda02) );
 	//a2a2
 	temp_hessmat(3,3) = arma::accu( exp(a2) * (1-delta1) % delta2 % arma::log(y1) - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * commonVec % Lambda02 + exp(a2) * dcommonVecda2 % Lambda02 + exp(2 * a2) * commonVec % Lambda02 % arma::log(y1)) );
 	//a2a3
-	temp_hessmat(3,5) = arma::accu( - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * dcommonVecda3 % Lambda02) ); 
+	temp_hessmat(3,5) = arma::accu( - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * dcommonVecda3 % Lambda02) );
 	temp_hessmat(5,3) = temp_hessmat(3,5);
 
-	//***********a3 section**********// 
+	//***********a3 section**********//
 	//temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * logdiff) - commonVec % Lambda03 % arma::exp(h+a3+eta3) % logdiff );
 
 	//a3a3
@@ -821,32 +821,32 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	//temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2 / (1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec) );
 
 	//hh
-	// from wolfram alpha (as an alternate derivation, with delta1=a and delta2=b): 
+	// from wolfram alpha (as an alternate derivation, with delta1=a and delta2=b):
 	// https://www.wolframalpha.com/input/?i=derivative+of+e%5Eh+*+(+a*b+%2F+(1%2Be%5Eh)+%2B+log(1+%2B+e%5Eh+*+A)+%2F+(e%5E(2*h))+-+(e%5E(-h)+%2B+a+%2B+b)+*+A+%2F+(1+%2B+e%5Eh+*+A))+with+respect+to+h
-	temp_hessmat(6,6) = arma::accu( (-delta1 + 2 * AVec - delta2) / (AVec * exp(h)+1) 
+	temp_hessmat(6,6) = arma::accu( (-delta1 + 2 * AVec - delta2) / (AVec * exp(h)+1)
 								  + (delta1 - AVec + delta2) / (arma::pow(AVec * exp(h) + 1 , 2))
 								  + delta1 % delta2 / (exp(h) + 1)
 								  - delta1 % delta2 / (pow(exp(h) + 1, 2))
 								  - exp(-h) * arma::log1p(AVec * exp(h))
-								  );	
+								  );
 	//ha1
-	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda1 + commonVec % dAVecda1 ));
 	temp_hessmat(1,6) = temp_hessmat(6,1);
 	//hk2
-	temp_hessmat(6,2) = arma::accu( dAVecdk2 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,2) = arma::accu( dAVecdk2 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk2 + commonVec % dAVecdk2 ));
 	temp_hessmat(2,6) = temp_hessmat(6,2);
 	//ha2
-	temp_hessmat(6,3) = arma::accu( dAVecda2 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,3) = arma::accu( dAVecda2 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda2 + commonVec % dAVecda2 ));
 	temp_hessmat(3,6) = temp_hessmat(6,3);
 	//hk3
-	temp_hessmat(6,4) = arma::accu( dAVecdk3 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,4) = arma::accu( dAVecdk3 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk3 + commonVec % dAVecdk3 ));
 	temp_hessmat(4,6) = temp_hessmat(6,4);
 	//ha3
-	temp_hessmat(6,5) = arma::accu( dAVecda3 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,5) = arma::accu( dAVecda3 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda3 + commonVec % dAVecda3 ));
 	temp_hessmat(5,6) = temp_hessmat(6,5);
 
@@ -951,7 +951,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 	    temp_hessmat(5,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),5).t();
 	    //beta3h
 	    temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6) = X3.t() * ( - Lambda03 % arma::exp(h + eta3) % (commonVec - (commonVec % AVec * exp(h) + exp(-h) ) / (1+exp(h)*AVec) ) );
-	    temp_hessmat(6,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6).t();    
+	    temp_hessmat(6,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6).t();
 
 	    //beta3beta3
 	    temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = X3.t() * (X3.each_col() % ( - (Lambda03 % arma::exp(h + eta3) % ( commonVec + dcommonVecdk3 )))); //computes sum of w_i * x_ix_i^T
@@ -969,7 +969,7 @@ arma::mat nhessWB_ID_frail_SM(const arma::vec& para,
 
 //this is the hessian with the markov assumption
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 							 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 							 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
@@ -1020,7 +1020,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 	arma::vec dAVecda1 = Lambda01 % arma::exp(a1 + eta1) % arma::log(y1);
 	arma::vec dAVecda2 = Lambda02 % arma::exp(a2 + eta2) % arma::log(y1);
 	arma::vec dAVecda3 = arma::exp(a3 + eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1));
-	
+
 	arma::vec dcommonVecdk1 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk1;
 	arma::vec dcommonVecdk2 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk2;
 	arma::vec dcommonVecdk3 = -(exp(h) * commonVec) / (1 + exp(h)*AVec) % dAVecdk3;
@@ -1033,7 +1033,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 
 	//***********k1 section***********//
 	//temp_scorevec(0) = arma::accu(delta1 - commonVec % Lambda01 % arma::exp(h + eta1));
-	
+
 	//k1k1
 	temp_hessmat(0,0) = arma::accu( - arma::exp(h + eta1) % ( dcommonVecdk1 % Lambda01 + commonVec % Lambda01 ) );
 	//k1a1
@@ -1052,7 +1052,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 	temp_hessmat(0,5) = arma::accu( - arma::exp(h + eta1) % ( dcommonVecda3 % Lambda01 ) );
 	temp_hessmat(5,0) = temp_hessmat(0,5);
 	//k1h
-	temp_hessmat(6,0) = arma::accu( dAVecdk1 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,0) = arma::accu( dAVecdk1 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk1 + commonVec % dAVecdk1 ));
 	temp_hessmat(0,6) = temp_hessmat(6,0);
 
@@ -1074,7 +1074,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 	temp_hessmat(5,2) = arma::accu( - arma::exp(h + eta2) % ( dcommonVecda3 % Lambda02 ) );
 	temp_hessmat(2,5) = temp_hessmat(5,2);
 
-	//***********k3 section***********// 
+	//***********k3 section***********//
 	//temp_scorevec(4) = arma::accu( delta1 % delta2 - commonVec % Lambda03 % arma::exp(h+eta3));
 
 	//k3k3
@@ -1089,72 +1089,72 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 	temp_hessmat(5,4) = arma::accu( - arma::exp(h + eta3) % ( dcommonVecda3 % Lambda03diff + exp(a3) * commonVec % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) ) );
 	temp_hessmat(4,5) = temp_hessmat(5,4);
 
-	//***********a1 section**********// 
+	//***********a1 section**********//
 	//temp_scorevec(1) = arma::accu( delta1 % (1 + exp(a1) * arma::log(y1)) - exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1));
-	//rewritten as 		 arma::accu( delta1 + exp(a1) * delta1 % arma::log(y1) - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * commonVec % Lambda01) ); 
+	//rewritten as 		 arma::accu( delta1 + exp(a1) * delta1 % arma::log(y1) - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * commonVec % Lambda01) );
 
 	//a1a1
-	temp_hessmat(1,1) = arma::accu( exp(a1) * delta1 % arma::log(y1) - 
-									arma::exp(h+eta1) % arma::log(y1) % ( exp(a1) * commonVec % Lambda01 + 
-																		  exp(a1) * dcommonVecda1 % Lambda01 + 
-																		  exp(2 * a1) * commonVec % Lambda01 % arma::log(y1) ) ); 
+	temp_hessmat(1,1) = arma::accu( exp(a1) * delta1 % arma::log(y1) -
+									arma::exp(h+eta1) % arma::log(y1) % ( exp(a1) * commonVec % Lambda01 +
+																		  exp(a1) * dcommonVecda1 % Lambda01 +
+																		  exp(2 * a1) * commonVec % Lambda01 % arma::log(y1) ) );
 	//a1a2
-	temp_hessmat(1,3) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda2 % Lambda01) ); 
+	temp_hessmat(1,3) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda2 % Lambda01) );
 	temp_hessmat(3,1) = temp_hessmat(1,3);
 	//a1a3
-	temp_hessmat(1,5) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda3 % Lambda01) ); 
+	temp_hessmat(1,5) = arma::accu( - arma::exp(h+eta1) % arma::log(y1) % (exp(a1) * dcommonVecda3 % Lambda01) );
 	temp_hessmat(5,1) = temp_hessmat(1,5);
 
-	//***********a2 section**********// 
+	//***********a2 section**********//
 	//temp_scorevec(3) = arma::accu( (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1) );
 
 	//rewritten as arma::accu( (1-delta1) % delta2 + exp(a2) * (1-delta1) % delta2 % arma::log(y1) - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * commonVec % Lambda02) );
 	//a2a2
 	temp_hessmat(3,3) = arma::accu( exp(a2) * (1-delta1) % delta2 % arma::log(y1) - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * commonVec % Lambda02 + exp(a2) * dcommonVecda2 % Lambda02 + exp(2 * a2) * commonVec % Lambda02 % arma::log(y1)) );
 	//a2a3
-	temp_hessmat(3,5) = arma::accu( - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * dcommonVecda3 % Lambda02) ); 
+	temp_hessmat(3,5) = arma::accu( - arma::exp(h+eta2) % arma::log(y1) % (exp(a2) * dcommonVecda3 % Lambda02) );
 	temp_hessmat(5,3) = temp_hessmat(3,5);
 
-	//***********a3 section**********// 
-	//temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) - 
+	//***********a3 section**********//
+	//temp_scorevec(5) = arma::accu( delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) -
 	//								commonVec % arma::exp(h+a3+eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) );
 
 	//a3a3
-	temp_hessmat(5,5) = arma::accu( exp(a3) * delta1 % delta2 % arma::log(y2) 
-									- arma::exp(h+eta3) % ( exp(a3) * commonVec % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) 
-														    + exp(a3) * dcommonVecda3 % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) 
+	temp_hessmat(5,5) = arma::accu( exp(a3) * delta1 % delta2 % arma::log(y2)
+									- arma::exp(h+eta3) % ( exp(a3) * commonVec % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1))
+														    + exp(a3) * dcommonVecda3 % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1))
 														    + exp(2 * a3) * commonVec % (Lambda03y2 % arma::log(y2) % arma::log(y2) - Lambda03y1 % arma::log(y1) % arma::log(y1)) ) ) ;
 
 	//***********h section***********//
 	//temp_scorevec(6) = arma::accu(exp(h)*(delta1 % delta2 / (1+exp(h)) + arma::log(1+exp(h) * AVec)/exp(2*h) - commonVec % AVec) );
 
 	//hh
-	// from wolfram alpha (as an alternate derivation, with delta1=a and delta2=b): 
+	// from wolfram alpha (as an alternate derivation, with delta1=a and delta2=b):
 	// https://www.wolframalpha.com/input/?i=derivative+of+e%5Eh+*+(+a*b+%2F+(1%2Be%5Eh)+%2B+log(1+%2B+e%5Eh+*+A)+%2F+(e%5E(2*h))+-+(e%5E(-h)+%2B+a+%2B+b)+*+A+%2F+(1+%2B+e%5Eh+*+A))+with+respect+to+h
-	temp_hessmat(6,6) = arma::accu( (-delta1 + 2 * AVec - delta2) / (AVec * exp(h)+1) 
+	temp_hessmat(6,6) = arma::accu( (-delta1 + 2 * AVec - delta2) / (AVec * exp(h)+1)
 								  + (delta1 - AVec + delta2) / (arma::pow(AVec * exp(h) + 1 , 2))
 								  + delta1 % delta2 / (exp(h) + 1)
 								  - delta1 % delta2 / (pow(exp(h) + 1, 2))
 								  - exp(-h) * arma::log1p(AVec * exp(h))
-								  );	
+								  );
 	//ha1
-	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,1) = arma::accu( dAVecda1 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda1 + commonVec % dAVecda1 ));
 	temp_hessmat(1,6) = temp_hessmat(6,1);
 	//hk2
-	temp_hessmat(6,2) = arma::accu( dAVecdk2 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,2) = arma::accu( dAVecdk2 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk2 + commonVec % dAVecdk2 ));
 	temp_hessmat(2,6) = temp_hessmat(6,2);
 	//ha2
-	temp_hessmat(6,3) = arma::accu( dAVecda2 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,3) = arma::accu( dAVecda2 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda2 + commonVec % dAVecda2 ));
 	temp_hessmat(3,6) = temp_hessmat(6,3);
 	//hk3
-	temp_hessmat(6,4) = arma::accu( dAVecdk3 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,4) = arma::accu( dAVecdk3 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecdk3 + commonVec % dAVecdk3 ));
 	temp_hessmat(4,6) = temp_hessmat(6,4);
 	//ha3
-	temp_hessmat(6,5) = arma::accu( dAVecda3 / (1 + exp(h)*AVec) - 
+	temp_hessmat(6,5) = arma::accu( dAVecda3 / (1 + exp(h)*AVec) -
 							exp(h) * (AVec % dcommonVecda3 + commonVec % dAVecda3 ));
 	temp_hessmat(5,6) = temp_hessmat(6,5);
 
@@ -1261,7 +1261,7 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 	    temp_hessmat(5,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),5).t();
 	    //beta3h
 	    temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6) = X3.t() * ( - Lambda03diff % arma::exp(h + eta3) % (commonVec - (commonVec % AVec * exp(h) + exp(-h) ) / (1+exp(h)*AVec) ) );
-	    temp_hessmat(6,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6).t();    
+	    temp_hessmat(6,arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),6).t();
 
 	    //beta3beta3
 	    temp_hessmat(arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1),arma::span(7 + p1 + p2,7 + p1 + p2 + p3 - 1)) = X3.t() * (X3.each_col() % ( - (Lambda03diff % arma::exp(h + eta3) % ( commonVec + dcommonVecdk3 )))); //computes sum of w_i * x_ix_i^T
@@ -1273,9 +1273,9 @@ arma::mat nhessWB_ID_frail_M(const arma::vec& para,
 
 
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::mat ngradWB_ID_frail_mat_SM(const arma::vec& para,
-								  const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
+								  const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 								  const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
 	//define constants
 	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	int n = X1.n_rows;
@@ -1325,17 +1325,17 @@ arma::mat ngradWB_ID_frail_mat_SM(const arma::vec& para,
 	temp_scoremat(arma::span(0,n-1),1) = delta1 % (1 + exp(a1) * arma::log(y1)) -
 									exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1);
 	//k2 (what ina calls u7)
-	temp_scoremat(arma::span(0,n-1),2) = (1-delta1) % delta2 - 
+	temp_scoremat(arma::span(0,n-1),2) = (1-delta1) % delta2 -
 									commonVec % Lambda02 % arma::exp(h+eta2);
 	//a2 (what ina calls u8)
-	temp_scoremat(arma::span(0,n-1),3) = (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - 
+	temp_scoremat(arma::span(0,n-1),3) = (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) -
 									commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1);
 	//k3 (what ina calls u9)
-	temp_scoremat(arma::span(0,n-1),4) = delta1 % delta2 - 
+	temp_scoremat(arma::span(0,n-1),4) = delta1 % delta2 -
 									commonVec % Lambda03 % arma::exp(h+eta3);
 
 	//a3 (what ina calls u10)
-	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * logdiff) - 
+	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * logdiff) -
 									commonVec % Lambda03 % arma::exp(h+a3+eta3) % logdiff;
 	//h (what ina calls u1)
 	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec);
@@ -1362,9 +1362,9 @@ arma::mat ngradWB_ID_frail_mat_SM(const arma::vec& para,
 }
 
 
-// [[Rcpp::export]] 
+// [[Rcpp::export]]
 arma::mat ngradWB_ID_frail_mat_M(const arma::vec& para,
-								 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2, 
+								 const arma::vec& y1,const arma::vec& y2, const arma::vec& delta1, const arma::vec& delta2,
 								 const arma::mat& X1, const arma::mat& X2, const arma::mat& X3){
 	//define constants
 	int p1 = X1.n_cols; int p2 = X2.n_cols;	int p3 = X3.n_cols;	int n = X1.n_rows;
@@ -1412,17 +1412,17 @@ arma::mat ngradWB_ID_frail_mat_M(const arma::vec& para,
 	temp_scoremat(arma::span(0,n-1),1) = delta1 % (1 + exp(a1) * arma::log(y1)) -
 									exp(a1) * commonVec % Lambda01 % arma::exp(h+eta1) % arma::log(y1);
 	//k2 (what ina calls u7)
-	temp_scoremat(arma::span(0,n-1),2) = (1-delta1) % delta2 - 
+	temp_scoremat(arma::span(0,n-1),2) = (1-delta1) % delta2 -
 									commonVec % Lambda02 % arma::exp(h+eta2);
 	//a2 (what ina calls u8)
-	temp_scoremat(arma::span(0,n-1),3) = (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) - 
+	temp_scoremat(arma::span(0,n-1),3) = (1-delta1) % delta2 % (1 + exp(a2) * arma::log(y1)) -
 									commonVec % Lambda02 % arma::exp(h+a2+eta2) % arma::log(y1);
 	//k3 (what ina calls u9)
-	temp_scoremat(arma::span(0,n-1),4) = delta1 % delta2 - 
+	temp_scoremat(arma::span(0,n-1),4) = delta1 % delta2 -
 									commonVec % (Lambda03y2 - Lambda03y1) % arma::exp(h+eta3);
 
 	//a3 (what ina calls u10)
-	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) - 
+	temp_scoremat(arma::span(0,n-1),5) = delta1 % delta2 % (1 + exp(a3) * arma::log(y2)) -
 									commonVec % arma::exp(h+a3+eta3) % (Lambda03y2 % arma::log(y2) - Lambda03y1 % arma::log(y1)) ;
 	//h (what ina calls u1)
 	temp_scoremat(arma::span(0,n-1),6) = exp(h)*(delta1 % delta2/(1+exp(h)) + arma::log1p(exp(h) * AVec)/exp(2*h) - commonVec % AVec);
@@ -1430,7 +1430,7 @@ arma::mat ngradWB_ID_frail_mat_M(const arma::vec& para,
 	//beta1 (what ina calls u2)
 	if(p1 > 0){
 		temp_scoremat(arma::span(0,n-1),arma::span(7, 7 + p1 - 1)) = X1;
-		temp_scoremat(arma::span(0,n-1),arma::span(7, 7 + p1 - 1)).each_col() %= (delta1 - commonVec % Lambda01 % arma::exp(h + eta1));		
+		temp_scoremat(arma::span(0,n-1),arma::span(7, 7 + p1 - 1)).each_col() %= (delta1 - commonVec % Lambda01 % arma::exp(h + eta1));
 	}
 
 	//beta2 (what ina calls u3)
@@ -1444,13 +1444,7 @@ arma::mat ngradWB_ID_frail_mat_M(const arma::vec& para,
 		temp_scoremat(arma::span(0,n-1),arma::span(7 + p1 + p2 , 7 + p1 + p2 + p3 - 1))  = X3;
 		temp_scoremat(arma::span(0,n-1),arma::span(7 + p1 + p2 , 7 + p1 + p2 + p3 - 1)).each_col() %= (delta1 % delta2 - commonVec % (Lambda03y2 - Lambda03y1) % arma::exp(h + eta3));
 	}
-	
+
     return -temp_scoremat;
 }
-
-
-
-
-
-
 

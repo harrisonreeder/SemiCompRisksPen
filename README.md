@@ -11,11 +11,16 @@ experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](h
 status](https://www.r-pkg.org/badges/version/SemiCompRisksPen)](https://CRAN.R-project.org/package=SemiCompRisksPen)
 <!-- badges: end -->
 
-The goal of SemiCompRisksPen is to fit parametric frailty-based illness-death models with penalization.
+The goal of SemiCompRisksPen is to perform penalized estimation of
+fraily-based parametric illness-death models for semi-competing risks,
+as described in:
 
-## Code of Conduct
+Reeder HT, Lu J, Haneuse S. Penalized estimation of frailty‐based
+illness–death models for semi‐competing risks. Biometrics. 2023
+Sep;79(3):1657-69.
 
-Please note that the SemiCompRisksPen project is released with a
-[Contributor Code of
-Conduct](https://contributor-covenant.org/version/2/0/CODE_OF_CONDUCT.html).
-By contributing to this project, you agree to abide by its terms.
+*This package has largely been superceded by the package
+SemiCompRisksFreq* which incorporates the functionality of this package
+as well as many other features. So, for most users it will be preferable
+to download the package here:
+[SemiCompRisksFreq](https://github.com/harrisonreeder/SemiCompRisksFreq)

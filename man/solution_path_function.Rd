@@ -56,19 +56,11 @@ the first \eqn{k_1+k_2+k_3} elements correspond to the baseline hazard parameter
 then the \eqn{k_1+k_2+k_3+1} element corresponds to the gamma frailty log-variance parameter,
 then the last\eqn{q_1+q_2+q_3} elements correspond with the regression parameters.}
 
-\item{y1}{Numeric vectors of length \eqn{n} with (possibly censored) non-terminal and terminal event times}
+\item{y1, y2}{Numeric vectors of length \eqn{n} with (possibly censored) non-terminal and terminal event times}
 
-\item{y2}{Numeric vectors of length \eqn{n} with (possibly censored) non-terminal and terminal event times}
+\item{delta1, delta2}{Numeric vectors of length \eqn{n}  with indicators of 1 if the event was observed and 0 otherwise}
 
-\item{delta1}{Numeric vectors of length \eqn{n}  with indicators of 1 if the event was observed and 0 otherwise}
-
-\item{delta2}{Numeric vectors of length \eqn{n}  with indicators of 1 if the event was observed and 0 otherwise}
-
-\item{Xmat1}{Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.}
-
-\item{Xmat2}{Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.}
-
-\item{Xmat3}{Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.}
+\item{Xmat1, Xmat2, Xmat3}{Numeric matrices with \eqn{n} rows and \eqn{q_1,q_2,q_3} columns containing covariates.}
 
 \item{hazard}{String specifying the form of the baseline hazard.}
 
@@ -77,39 +69,13 @@ be included. Currently this must be set to TRUE.}
 
 \item{model}{String specifying the transition assumption}
 
-\item{basis1}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
+\item{basis1, basis2, basis3, basis3_y1}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
 with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
 Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
 while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
 Not used under Weibull model.}
 
-\item{basis2}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
-Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
-while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
-Not used under Weibull model.}
-
-\item{basis3}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
-Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
-while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
-Not used under Weibull model.}
-
-\item{basis3_y1}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-with piecewise/spline basis function values at the corresponding \code{y1} and \code{y2} values.
-Under semi-Markov model, basis3 represents basis derived from \eqn{y_2-y_1} and \code{basis3_y1} is unused,
-while under Markov model, basis3 represents basis derived from \eqn{y_2} and \code{basis3_y1} is from \eqn{y_1}
-Not used under Weibull model.}
-
-\item{dbasis1}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-with piecewise/spline basis function derivative values at the corresponding \code{y1} and \code{y2} values.
-Used only under Royston-Parmar model.}
-
-\item{dbasis2}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
-with piecewise/spline basis function derivative values at the corresponding \code{y1} and \code{y2} values.
-Used only under Royston-Parmar model.}
-
-\item{dbasis3}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
+\item{dbasis1, dbasis2, dbasis3}{Numeric matrices with \eqn{n} rows and \eqn{k_1,k_2,k_3} columns
 with piecewise/spline basis function derivative values at the corresponding \code{y1} and \code{y2} values.
 Used only under Royston-Parmar model.}
 

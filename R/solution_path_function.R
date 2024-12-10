@@ -178,7 +178,7 @@ solution_path_function <- function(para, y1, y2, delta1, delta2,
         for(mu_smooth_iter in 1:mu_smooth_length){
 
           #if there is no fusion, there should be no smoothing
-          mu_smooth_fused <- if(lambda_fusedcoef==0) 0 else mu_smooth_path[mu_smooth_iter,]
+          mu_smooth_fused <- if(all(lambda_fusedcoef==0)) 0 else mu_smooth_path[mu_smooth_iter,]
 
           if(fit_method=="prox_grad"){
             tempfit <- proximal_gradient_descent(para=startVals_innermost, y1=y1, y2=y2, delta1=delta1, delta2=delta2,

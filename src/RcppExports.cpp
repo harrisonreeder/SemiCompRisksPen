@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // nlogLikRP_uni
 double nlogLikRP_uni(const arma::vec& para, const arma::vec& delta, const arma::vec& y, const arma::mat& basis, const arma::mat& dbasis, const arma::mat& X);
 RcppExport SEXP _SemiCompRisksPen_nlogLikRP_uni(SEXP paraSEXP, SEXP deltaSEXP, SEXP ySEXP, SEXP basisSEXP, SEXP dbasisSEXP, SEXP XSEXP) {
@@ -282,6 +287,60 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// cscr_samples_weibSM
+Rcpp::List cscr_samples_weibSM(const arma::vec& phi1, const arma::vec& phi2, const arma::vec& phi3, const arma::vec& beta1, const arma::vec& beta2, const arma::vec& beta3, const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, double gamma, int logit_ind, double betad0, const arma::vec& betad, double betad_t1, const arma::mat& Xd, const arma::vec& tout, int Nmax, double rel_tol);
+RcppExport SEXP _SemiCompRisksPen_cscr_samples_weibSM(SEXP phi1SEXP, SEXP phi2SEXP, SEXP phi3SEXP, SEXP beta1SEXP, SEXP beta2SEXP, SEXP beta3SEXP, SEXP X1SEXP, SEXP X2SEXP, SEXP X3SEXP, SEXP gammaSEXP, SEXP logit_indSEXP, SEXP betad0SEXP, SEXP betadSEXP, SEXP betad_t1SEXP, SEXP XdSEXP, SEXP toutSEXP, SEXP NmaxSEXP, SEXP rel_tolSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi1(phi1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi2(phi2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi3(phi3SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta1(beta1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta2(beta2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta3(beta3SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X1(X1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X2(X2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X3(X3SEXP);
+    Rcpp::traits::input_parameter< double >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< int >::type logit_ind(logit_indSEXP);
+    Rcpp::traits::input_parameter< double >::type betad0(betad0SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type betad(betadSEXP);
+    Rcpp::traits::input_parameter< double >::type betad_t1(betad_t1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Xd(XdSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tout(toutSEXP);
+    Rcpp::traits::input_parameter< int >::type Nmax(NmaxSEXP);
+    Rcpp::traits::input_parameter< double >::type rel_tol(rel_tolSEXP);
+    rcpp_result_gen = Rcpp::wrap(cscr_samples_weibSM(phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout, Nmax, rel_tol));
+    return rcpp_result_gen;
+END_RCPP
+}
+// cscr_samples_weibSM_trapz
+Rcpp::List cscr_samples_weibSM_trapz(const arma::vec& phi1, const arma::vec& phi2, const arma::vec& phi3, const arma::vec& beta1, const arma::vec& beta2, const arma::vec& beta3, const arma::mat& X1, const arma::mat& X2, const arma::mat& X3, double gamma, int logit_ind, double betad0, const arma::vec& betad, double betad_t1, const arma::mat& Xd, const arma::vec& tout);
+RcppExport SEXP _SemiCompRisksPen_cscr_samples_weibSM_trapz(SEXP phi1SEXP, SEXP phi2SEXP, SEXP phi3SEXP, SEXP beta1SEXP, SEXP beta2SEXP, SEXP beta3SEXP, SEXP X1SEXP, SEXP X2SEXP, SEXP X3SEXP, SEXP gammaSEXP, SEXP logit_indSEXP, SEXP betad0SEXP, SEXP betadSEXP, SEXP betad_t1SEXP, SEXP XdSEXP, SEXP toutSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi1(phi1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi2(phi2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type phi3(phi3SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta1(beta1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta2(beta2SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type beta3(beta3SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X1(X1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X2(X2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X3(X3SEXP);
+    Rcpp::traits::input_parameter< double >::type gamma(gammaSEXP);
+    Rcpp::traits::input_parameter< int >::type logit_ind(logit_indSEXP);
+    Rcpp::traits::input_parameter< double >::type betad0(betad0SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type betad(betadSEXP);
+    Rcpp::traits::input_parameter< double >::type betad_t1(betad_t1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Xd(XdSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type tout(toutSEXP);
+    rcpp_result_gen = Rcpp::wrap(cscr_samples_weibSM_trapz(phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_SemiCompRisksPen_nlogLikRP_uni", (DL_FUNC) &_SemiCompRisksPen_nlogLikRP_uni, 6},
@@ -298,6 +357,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_SemiCompRisksPen_ngradWB_ID_frail_mat_SM", (DL_FUNC) &_SemiCompRisksPen_ngradWB_ID_frail_mat_SM, 8},
     {"_SemiCompRisksPen_ngradWB_ID_frail_mat_M", (DL_FUNC) &_SemiCompRisksPen_ngradWB_ID_frail_mat_M, 8},
     {"_SemiCompRisksPen_admm_po_cpp", (DL_FUNC) &_SemiCompRisksPen_admm_po_cpp, 9},
+    {"_SemiCompRisksPen_cscr_samples_weibSM", (DL_FUNC) &_SemiCompRisksPen_cscr_samples_weibSM, 18},
+    {"_SemiCompRisksPen_cscr_samples_weibSM_trapz", (DL_FUNC) &_SemiCompRisksPen_cscr_samples_weibSM_trapz, 16},
     {NULL, NULL, 0}
 };
 

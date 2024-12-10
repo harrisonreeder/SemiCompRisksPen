@@ -57,3 +57,11 @@ admm_po_cpp <- function(beta_tilde, slambda, penmat, Q, eigval, fast, maxiter, r
     .Call(`_SemiCompRisksPen_admm_po_cpp`, beta_tilde, slambda, penmat, Q, eigval, fast, maxiter, rho, beta_old)
 }
 
+cscr_samples_weibSM <- function(phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout, Nmax, rel_tol) {
+    .Call(`_SemiCompRisksPen_cscr_samples_weibSM`, phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout, Nmax, rel_tol)
+}
+
+cscr_samples_weibSM_trapz <- function(phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout) {
+    .Call(`_SemiCompRisksPen_cscr_samples_weibSM_trapz`, phi1, phi2, phi3, beta1, beta2, beta3, X1, X2, X3, gamma, logit_ind, betad0, betad, betad_t1, Xd, tout)
+}
+
